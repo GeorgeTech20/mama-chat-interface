@@ -8,21 +8,55 @@ import { Message } from '@/types/health';
 import { cn } from '@/lib/utils';
 import mamaAvatar from '@/assets/mama-avatar.png';
 
+interface ConversationState {
+  step: number;
+  symptoms: string[];
+  duration: string;
+  severity: string;
+}
+
 const initialMessages: Message[] = [
   {
     id: '1',
-    content: '¡Hola! Soy Mama, tu asistente de salud. ¿En qué puedo ayudarte hoy?',
+    content: '¡Hola! Soy Mama, tu asistente de salud. 💜\n\nEstoy aquí para ayudarte. Cuéntame, ¿qué síntomas estás experimentando hoy?',
     sender: 'mama',
     timestamp: new Date(),
   },
 ];
 
-const mamaResponses = [
-  "Entiendo cómo te sientes. ¿Podrías contarme más sobre tus síntomas?",
-  "Es importante cuidar tu salud. Te recomiendo consultar con un especialista si los síntomas persisten.",
-  "Recuerda mantener una buena hidratación y descanso. ¿Hay algo más en lo que pueda ayudarte?",
-  "Puedo ayudarte a encontrar un doctor especializado. ¿Qué tipo de consulta necesitas?",
-  "Tu bienestar es mi prioridad. ¿Has considerado agendar una cita con uno de nuestros doctores?",
+const symptomQuestions = [
+  {
+    keywords: ['dolor', 'cabeza', 'cefalea'],
+    followUp: '¿Hace cuánto tiempo tienes este dolor de cabeza? ¿Es constante o intermitente?',
+    recommendation: 'Para el dolor de cabeza te recomiendo:\n\n• Descansar en un lugar oscuro y silencioso\n• Tomar abundante agua\n• Aplicar compresas frías en la frente\n• Si persiste más de 24 horas, consulta con un médico\n\n¿Tienes algún otro síntoma?',
+  },
+  {
+    keywords: ['fiebre', 'temperatura', 'caliente'],
+    followUp: '¿Has medido tu temperatura? ¿Tienes otros síntomas como escalofríos o sudoración?',
+    recommendation: 'Para la fiebre te recomiendo:\n\n• Mantente hidratado con agua y líquidos\n• Usa ropa ligera\n• Descansa lo suficiente\n• Si la fiebre supera 38.5°C o dura más de 3 días, consulta a un médico\n\n¿Hay algo más que te preocupe?',
+  },
+  {
+    keywords: ['estómago', 'náuseas', 'vómito', 'diarrea', 'digestión'],
+    followUp: '¿Desde cuándo tienes estas molestias estomacales? ¿Has comido algo diferente recientemente?',
+    recommendation: 'Para las molestias estomacales te recomiendo:\n\n• Dieta blanda (arroz, pollo, plátano)\n• Evita alimentos grasos y picantes\n• Toma líquidos en pequeños sorbos\n• Si hay sangre o los síntomas persisten, busca atención médica\n\n¿Cómo te sientes ahora?',
+  },
+  {
+    keywords: ['cansancio', 'fatiga', 'sueño', 'agotado'],
+    followUp: '¿Cuántas horas estás durmiendo? ¿Este cansancio es reciente o llevas tiempo sintiéndote así?',
+    recommendation: 'Para combatir el cansancio te recomiendo:\n\n• Dormir 7-8 horas diarias\n• Hacer ejercicio ligero regularmente\n• Alimentación balanceada\n• Reducir el estrés con técnicas de relajación\n\n¿Te gustaría agendar una cita con un especialista?',
+  },
+  {
+    keywords: ['tos', 'gripe', 'resfriado', 'congestión', 'nariz'],
+    followUp: '¿La tos es seca o con flema? ¿Tienes otros síntomas como congestión nasal?',
+    recommendation: 'Para los síntomas de gripe te recomiendo:\n\n• Descanso absoluto\n• Líquidos calientes (té, sopas)\n• Miel con limón para la garganta\n• Vapor de agua para la congestión\n• Si hay dificultad para respirar, consulta inmediatamente\n\n¿Necesitas más ayuda?',
+  },
+];
+
+const defaultResponses = [
+  'Entiendo. ¿Podrías darme más detalles sobre cómo te sientes? Por ejemplo, ¿dónde sientes las molestias?',
+  'Gracias por compartir eso conmigo. ¿Hace cuánto tiempo comenzaste a sentirte así?',
+  'Es importante que me cuentes más. ¿El malestar es constante o aparece en ciertos momentos?',
+  '¿Hay algo que haga que te sientas mejor o peor? Cuéntame más para poder ayudarte mejor.',
 ];
 
 const Chat = () => {
@@ -30,6 +64,7 @@ const Chat = () => {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [conversationContext, setConversationContext] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -39,6 +74,39 @@ const Chat = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const generateResponse = (userMessage: string): string => {
+    const lowerMessage = userMessage.toLowerCase();
+    
+    // Check for symptom keywords
+    for (const symptom of symptomQuestions) {
+      if (symptom.keywords.some(keyword => lowerMessage.includes(keyword))) {
+        // Check if we've already asked follow-up for this symptom
+        if (conversationContext.includes(symptom.keywords[0])) {
+          return symptom.recommendation;
+        } else {
+          setConversationContext(prev => [...prev, symptom.keywords[0]]);
+          return symptom.followUp;
+        }
+      }
+    }
+
+    // Check for general responses
+    if (lowerMessage.includes('gracias') || lowerMessage.includes('thank')) {
+      return '¡De nada! Recuerda que estoy aquí para ayudarte. Si tienes más preguntas sobre tu salud, no dudes en consultarme. 💜\n\n¿Hay algo más en lo que pueda ayudarte?';
+    }
+
+    if (lowerMessage.includes('cita') || lowerMessage.includes('doctor') || lowerMessage.includes('médico')) {
+      return '¡Claro! Puedo ayudarte a encontrar un especialista. En la sección de "Doctores Populares" encontrarás varios profesionales disponibles.\n\n¿Te gustaría que te recomiende alguno en particular según tus síntomas?';
+    }
+
+    if (lowerMessage.includes('hola') || lowerMessage.includes('buenos') || lowerMessage.includes('buenas')) {
+      return '¡Hola! ¿Cómo te encuentras hoy? Cuéntame si tienes algún síntoma o malestar que te preocupe. Estoy aquí para ayudarte. 💜';
+    }
+
+    // Default response - ask more questions
+    return defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
+  };
 
   const handleSend = () => {
     if (!inputValue.trim()) return;
@@ -51,15 +119,16 @@ const Chat = () => {
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    const currentInput = inputValue;
     setInputValue('');
     setIsTyping(true);
 
-    // Simulate Mama response
+    // Generate contextual response
     setTimeout(() => {
-      const randomResponse = mamaResponses[Math.floor(Math.random() * mamaResponses.length)];
+      const response = generateResponse(currentInput);
       const mamaMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: randomResponse,
+        content: response,
         sender: 'mama',
         timestamp: new Date(),
       };
@@ -82,10 +151,27 @@ const Chat = () => {
           <img src={mamaAvatar} alt="Mama" className="w-10 h-10 rounded-full" />
           <div>
             <h1 className="font-semibold text-foreground">Mama</h1>
-            <p className="text-xs text-green-500">En línea</p>
+            <p className="text-xs text-green-500">En línea • Asistente de salud</p>
           </div>
         </div>
       </header>
+
+      {/* Quick Symptom Buttons */}
+      <div className="px-4 py-3 bg-card/50 border-b border-border overflow-x-auto">
+        <div className="flex gap-2">
+          {['Dolor de cabeza', 'Fiebre', 'Tos', 'Cansancio', 'Estómago'].map((symptom) => (
+            <button
+              key={symptom}
+              onClick={() => {
+                setInputValue(`Tengo ${symptom.toLowerCase()}`);
+              }}
+              className="px-3 py-1.5 bg-primary/10 text-primary rounded-full text-sm font-medium whitespace-nowrap hover:bg-primary/20 transition-colors"
+            >
+              {symptom}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 pb-36 space-y-4">
@@ -108,7 +194,7 @@ const Chat = () => {
                   : "bg-card border border-border text-foreground rounded-bl-sm"
               )}
             >
-              <p className="text-sm">{message.content}</p>
+              <p className="text-sm whitespace-pre-line">{message.content}</p>
               <p
                 className={cn(
                   "text-xs mt-1",
@@ -146,7 +232,7 @@ const Chat = () => {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Escribe un mensaje..."
+            placeholder="Describe tus síntomas..."
             className="flex-1 bg-card border-border rounded-full py-5"
           />
           <button
