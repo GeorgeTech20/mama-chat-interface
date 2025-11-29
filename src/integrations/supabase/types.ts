@@ -94,7 +94,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      upsert_profile: {
+        Args: {
+          p_birth_date: string
+          p_dni: string
+          p_gender: string
+          p_height: number
+          p_name: string
+          p_surname: string
+          p_user_id: string
+          p_weight: number
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
