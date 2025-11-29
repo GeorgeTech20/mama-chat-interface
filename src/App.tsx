@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Chat from "./pages/Chat";
 import DoctorProfile from "./pages/DoctorProfile";
 import Login from "./pages/Login";
+import Auth from "./pages/Auth";
 import Register from "./pages/Register";
 import MedicalLibrary from "./pages/MedicalLibrary";
 import NotFound from "./pages/NotFound";
@@ -22,6 +23,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/auth" element={<Auth />} />
           <Route path="/register" element={<Register />} />
           <Route path="/chat" element={<Chat />} />
           <Route path="/library" element={<MedicalLibrary />} />
