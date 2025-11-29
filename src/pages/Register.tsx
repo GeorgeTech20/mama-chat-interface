@@ -206,25 +206,20 @@ const Register = () => {
 
       const birthDate = `${formData.birthYear}-${String(formData.birthMonth).padStart(2, '0')}-${String(formData.birthDay).padStart(2, '0')}`;
       
-      // Use upsert to handle both insert and update cases
-      // This works whether the profile was created by trigger or not
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({
-          user_id: session.user.id, // Use session.user.id directly
-          name: formData.name.trim(),
-          surname: formData.surname.trim(),
-          dni: formData.dni.trim(),
-          birth_date: birthDate,
-          height: formData.height,
-          weight: formData.weight,
-          gender: formData.gender,
-        }, {
-          onConflict: 'user_id'
-        });
+      // Use RPC function to bypass RLS issues while maintaining security
+      const { error } = await supabase.rpc('upsert_profile', {
+        p_user_id: session.user.id,
+        p_name: formData.name.trim(),
+        p_surname: formData.surname.trim(),
+        p_dni: formData.dni.trim(),
+        p_birth_date: birthDate,
+        p_height: formData.height,
+        p_weight: formData.weight,
+        p_gender: formData.gender,
+      });
 
       if (error) {
-        if (error.code === '23505') {
+        if (error.code === '23505' || error.message.includes('dni')) {
           toast.error('Este DNI ya está registrado');
         } else {
           console.error('Profile upsert error:', error);
