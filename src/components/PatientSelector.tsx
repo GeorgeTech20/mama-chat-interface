@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronDown, User, Check } from 'lucide-react';
+import { ChevronDown, User, Check, Crown } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,6 +28,35 @@ const PatientSelector = () => {
       fetchPatients();
     }
   }, [user?.id]);
+
+  // Auto-set patient_main and patient_active if not configured
+  useEffect(() => {
+    const autoConfigurePatients = async () => {
+      if (!user?.id || !profile || patients.length === 0) return;
+      
+      // If no patient_main or patient_active, set the first patient
+      if (!profile.patient_main || !profile.patient_active) {
+        const firstPatient = patients[0];
+        try {
+          const updates: { patient_main?: string; patient_active?: string } = {};
+          if (!profile.patient_main) updates.patient_main = firstPatient.id;
+          if (!profile.patient_active) updates.patient_active = firstPatient.id;
+          
+          if (Object.keys(updates).length > 0) {
+            await supabase
+              .from('profiles')
+              .update(updates)
+              .eq('user_id', user.id);
+            await refreshProfile();
+          }
+        } catch (error) {
+          console.error('Error auto-configuring patients:', error);
+        }
+      }
+    };
+    
+    autoConfigurePatients();
+  }, [patients, profile, user?.id]);
 
   const fetchPatients = async () => {
     if (!user?.id) return;
@@ -66,6 +95,14 @@ const PatientSelector = () => {
     }
   };
 
+  // Sort patients: main patient first (or first patient if no main), then others
+  const mainPatientId = profile?.patient_main || (patients.length > 0 ? patients[0].id : null);
+  const sortedPatients = [...patients].sort((a, b) => {
+    if (a.id === mainPatientId) return -1;
+    if (b.id === mainPatientId) return 1;
+    return 0;
+  });
+
   const activePatient = patients.find(p => p.id === profile?.patient_active);
   const displayName = activePatient 
     ? `${activePatient.first_name} ${activePatient.last_name}`
@@ -101,40 +138,48 @@ const PatientSelector = () => {
       <PopoverContent className="w-72 p-2" align="start">
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground px-2 py-1">Seleccionar paciente</p>
-          {patients.map((patient) => {
-            const isActive = patient.id === profile?.patient_active;
-            const isMain = patient.id === profile?.patient_main;
-            
-            return (
-              <button
-                key={patient.id}
-                onClick={() => handleSelectPatient(patient.id)}
-                disabled={loading}
-                className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors ${
-                  isActive 
-                    ? 'bg-primary/10 border border-primary/30' 
-                    : 'hover:bg-accent'
-                }`}
-              >
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                  isActive ? 'bg-primary/20' : 'bg-muted'
-                }`}>
-                  <User className={`w-5 h-5 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
-                </div>
-                <div className="flex-1 text-left">
-                  <p className={`text-sm font-medium ${isActive ? 'text-primary' : 'text-foreground'}`}>
-                    {patient.first_name} {patient.last_name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {isMain ? 'Paciente principal' : 'Familiar'}
-                  </p>
-                </div>
-                {isActive && (
-                  <Check className="w-4 h-4 text-primary" />
-                )}
-              </button>
-            );
-          })}
+          {sortedPatients.length === 0 ? (
+            <p className="text-sm text-muted-foreground px-2 py-3 text-center">No hay pacientes registrados</p>
+          ) : (
+            sortedPatients.map((patient, index) => {
+              const isActive = patient.id === profile?.patient_active;
+              const isMain = patient.id === mainPatientId;
+              
+              return (
+                <button
+                  key={patient.id}
+                  onClick={() => handleSelectPatient(patient.id)}
+                  disabled={loading}
+                  className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors ${
+                    isActive 
+                      ? 'bg-primary/10 border border-primary/30' 
+                      : 'hover:bg-accent'
+                  }`}
+                >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    isActive ? 'bg-primary/20' : 'bg-muted'
+                  }`}>
+                    {isMain ? (
+                      <Crown className={`w-5 h-5 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                    ) : (
+                      <User className={`w-5 h-5 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                    )}
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className={`text-sm font-medium ${isActive ? 'text-primary' : 'text-foreground'}`}>
+                      {patient.first_name} {patient.last_name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {isMain ? 'Yo (Principal)' : 'Familiar'}
+                    </p>
+                  </div>
+                  {isActive && (
+                    <Check className="w-4 h-4 text-primary" />
+                  )}
+                </button>
+              );
+            })
+          )}
         </div>
       </PopoverContent>
     </Popover>
