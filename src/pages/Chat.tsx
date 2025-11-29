@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Send, Smile } from 'lucide-react';
+import { ArrowLeft, Send, Paperclip, Image, FileText, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import MobileLayout from '@/components/MobileLayout';
 import BottomNav from '@/components/BottomNav';
 import { Input } from '@/components/ui/input';
 import { Message } from '@/types/health';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import mamaAvatar from '@/assets/mama-avatar.png';
 
 interface ConversationState {
@@ -15,10 +17,17 @@ interface ConversationState {
   severity: string;
 }
 
+interface UploadedFile {
+  id: string;
+  name: string;
+  type: string;
+  url: string;
+}
+
 const initialMessages: Message[] = [
   {
     id: '1',
-    content: '¡Hola! Soy Mama, tu asistente de salud. 💜\n\nEstoy aquí para ayudarte. Cuéntame, ¿qué síntomas estás experimentando hoy?',
+    content: '¡Hola! Soy Mama, tu asistente de salud. 💜\n\nEstoy aquí para ayudarte. Cuéntame, ¿qué síntomas estás experimentando hoy?\n\nTambién puedes subir fotos o documentos médicos usando el botón 📎',
     sender: 'mama',
     timestamp: new Date(),
   },
@@ -61,11 +70,17 @@ const defaultResponses = [
 
 const Chat = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [conversationContext, setConversationContext] = useState<string[]>([]);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -75,13 +90,90 @@ const Chat = () => {
     scrollToBottom();
   }, [messages]);
 
-  const generateResponse = (userMessage: string): string => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'document') => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      toast({
+        title: "Archivo muy grande",
+        description: "El archivo no puede superar 10MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    setShowAttachMenu(false);
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `uploads/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('medical-files')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from('medical-files')
+        .getPublicUrl(filePath);
+
+      // Save to database
+      const { error: dbError } = await supabase.from('medical_files').insert({
+        file_name: file.name,
+        file_path: filePath,
+        file_type: file.type,
+        file_size: file.size,
+        user_id: null,
+      });
+
+      if (dbError) throw dbError;
+
+      // Add to uploaded files preview
+      const newFile: UploadedFile = {
+        id: Date.now().toString(),
+        name: file.name,
+        type: file.type,
+        url: urlData.publicUrl,
+      };
+      setUploadedFiles(prev => [...prev, newFile]);
+
+      toast({
+        title: "Archivo subido",
+        description: "El archivo se ha guardado en tu biblioteca médica",
+      });
+
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        title: "Error al subir",
+        description: "No se pudo subir el archivo. Intenta de nuevo.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (imageInputRef.current) imageInputRef.current.value = '';
+    }
+  };
+
+  const removeUploadedFile = (fileId: string) => {
+    setUploadedFiles(prev => prev.filter(f => f.id !== fileId));
+  };
+
+  const generateResponse = (userMessage: string, hasFiles: boolean): string => {
+    if (hasFiles) {
+      return '¡Gracias por compartir tus documentos médicos! 📄\n\nLos he guardado en tu biblioteca médica para que puedas acceder a ellos cuando los necesites.\n\n¿Hay algo específico sobre estos documentos que te gustaría preguntarme?';
+    }
+
     const lowerMessage = userMessage.toLowerCase();
     
-    // Check for symptom keywords
     for (const symptom of symptomQuestions) {
       if (symptom.keywords.some(keyword => lowerMessage.includes(keyword))) {
-        // Check if we've already asked follow-up for this symptom
         if (conversationContext.includes(symptom.keywords[0])) {
           return symptom.recommendation;
         } else {
@@ -91,29 +183,34 @@ const Chat = () => {
       }
     }
 
-    // Check for general responses
     if (lowerMessage.includes('gracias') || lowerMessage.includes('thank')) {
       return '¡De nada! Recuerda que estoy aquí para ayudarte. Si tienes más preguntas sobre tu salud, no dudes en consultarme. 💜\n\n¿Hay algo más en lo que pueda ayudarte?';
     }
 
     if (lowerMessage.includes('cita') || lowerMessage.includes('doctor') || lowerMessage.includes('médico')) {
-      return '¡Claro! Puedo ayudarte a encontrar un especialista. En la sección de "Doctores Populares" encontrarás varios profesionales disponibles.\n\n¿Te gustaría que te recomiende alguno en particular según tus síntomas?';
+      return '¡Claro! Puedo ayudarte a encontrar un especialista. En la sección de citas podrás ver los profesionales disponibles.\n\n¿Te gustaría que te recomiende alguno según tus síntomas?';
     }
 
     if (lowerMessage.includes('hola') || lowerMessage.includes('buenos') || lowerMessage.includes('buenas')) {
       return '¡Hola! ¿Cómo te encuentras hoy? Cuéntame si tienes algún síntoma o malestar que te preocupe. Estoy aquí para ayudarte. 💜';
     }
 
-    // Default response - ask more questions
+    if (lowerMessage.includes('archivo') || lowerMessage.includes('documento') || lowerMessage.includes('foto') || lowerMessage.includes('subir')) {
+      return '¡Claro! Puedes subir fotos y documentos médicos usando el botón 📎 junto al campo de texto. Se guardarán en tu biblioteca médica para que puedas acceder a ellos cuando lo necesites.';
+    }
+
     return defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
   };
 
   const handleSend = () => {
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() && uploadedFiles.length === 0) return;
+
+    const hasFiles = uploadedFiles.length > 0;
+    const messageContent = inputValue.trim() || (hasFiles ? `📎 ${uploadedFiles.length} archivo(s) adjunto(s)` : '');
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      content: inputValue,
+      content: messageContent,
       sender: 'user',
       timestamp: new Date(),
     };
@@ -121,11 +218,11 @@ const Chat = () => {
     setMessages((prev) => [...prev, userMessage]);
     const currentInput = inputValue;
     setInputValue('');
+    setUploadedFiles([]);
     setIsTyping(true);
 
-    // Generate contextual response
     setTimeout(() => {
-      const response = generateResponse(currentInput);
+      const response = generateResponse(currentInput, hasFiles);
       const mamaMessage: Message = {
         id: (Date.now() + 1).toString(),
         content: response,
@@ -140,18 +237,18 @@ const Chat = () => {
   return (
     <MobileLayout>
       {/* Header */}
-      <header className="flex items-center gap-4 px-4 py-4 bg-card border-b border-border">
+      <header className="flex items-center gap-4 px-4 py-4 bg-gradient-to-r from-primary to-chart-2 text-primary-foreground">
         <button
           onClick={() => navigate(-1)}
-          className="p-2 hover:bg-accent rounded-full transition-colors"
+          className="p-2 hover:bg-primary-foreground/10 rounded-full transition-colors"
         >
-          <ArrowLeft className="w-5 h-5 text-foreground" />
+          <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="flex items-center gap-3">
-          <img src={mamaAvatar} alt="Mama" className="w-10 h-10 rounded-full" />
+          <img src={mamaAvatar} alt="Mama" className="w-12 h-12 rounded-full border-2 border-primary-foreground/30" />
           <div>
-            <h1 className="font-semibold text-foreground">Mama</h1>
-            <p className="text-xs text-green-500">En línea • Asistente de salud</p>
+            <h1 className="font-bold text-lg">Mama</h1>
+            <p className="text-xs text-primary-foreground/80">En línea • Tu asistente de salud</p>
           </div>
         </div>
       </header>
@@ -174,7 +271,7 @@ const Chat = () => {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 pb-36 space-y-4">
+      <div className="flex-1 overflow-y-auto px-4 py-4 pb-40 space-y-4">
         {messages.map((message) => (
           <div
             key={message.id}
@@ -222,11 +319,91 @@ const Chat = () => {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Uploaded Files Preview */}
+      {uploadedFiles.length > 0 && (
+        <div className="fixed bottom-32 left-1/2 -translate-x-1/2 w-full max-w-md px-4">
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {uploadedFiles.map((file) => (
+              <div key={file.id} className="relative flex-shrink-0">
+                {file.type.startsWith('image/') ? (
+                  <img src={file.url} alt={file.name} className="w-16 h-16 object-cover rounded-lg border border-border" />
+                ) : (
+                  <div className="w-16 h-16 bg-card border border-border rounded-lg flex items-center justify-center">
+                    <FileText className="w-6 h-6 text-primary" />
+                  </div>
+                )}
+                <button
+                  onClick={() => removeUploadedFile(file.id)}
+                  className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Attach Menu */}
+      {showAttachMenu && (
+        <div className="fixed bottom-32 left-1/2 -translate-x-1/2 w-full max-w-md px-4">
+          <div className="bg-card border border-border rounded-2xl p-4 shadow-lg">
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={() => imageInputRef.current?.click()}
+                className="flex flex-col items-center gap-2 p-4 hover:bg-accent rounded-xl transition-colors"
+              >
+                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                  <Image className="w-6 h-6 text-primary" />
+                </div>
+                <span className="text-sm font-medium text-foreground">Foto</span>
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex flex-col items-center gap-2 p-4 hover:bg-accent rounded-xl transition-colors"
+              >
+                <div className="w-12 h-12 bg-chart-2/10 rounded-full flex items-center justify-center">
+                  <FileText className="w-6 h-6 text-chart-2" />
+                </div>
+                <span className="text-sm font-medium text-foreground">Documento</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden file inputs */}
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => handleFileUpload(e, 'image')}
+      />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.doc,.docx"
+        className="hidden"
+        onChange={(e) => handleFileUpload(e, 'document')}
+      />
+
       {/* Input */}
       <div className="fixed bottom-16 left-1/2 -translate-x-1/2 w-full max-w-md px-4 py-3 bg-background border-t border-border">
         <div className="flex items-center gap-2">
-          <button className="p-2 text-muted-foreground hover:text-foreground transition-colors">
-            <Smile className="w-6 h-6" />
+          <button 
+            onClick={() => setShowAttachMenu(!showAttachMenu)}
+            disabled={isUploading}
+            className={cn(
+              "p-2 rounded-full transition-colors",
+              showAttachMenu ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-accent"
+            )}
+          >
+            {isUploading ? (
+              <div className="w-6 h-6 border-2 border-muted-foreground border-t-primary rounded-full animate-spin" />
+            ) : (
+              <Paperclip className="w-6 h-6" />
+            )}
           </button>
           <Input
             value={inputValue}
@@ -237,7 +414,7 @@ const Chat = () => {
           />
           <button
             onClick={handleSend}
-            disabled={!inputValue.trim()}
+            disabled={!inputValue.trim() && uploadedFiles.length === 0}
             className="p-3 bg-primary text-primary-foreground rounded-full disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
           >
             <Send className="w-5 h-5" />
