@@ -1,22 +1,14 @@
-import { useState } from 'react';
-import { Bell } from 'lucide-react';
+import { Bell, FolderOpen, MessageCircleHeart } from 'lucide-react';
 import MobileLayout from '@/components/MobileLayout';
 import BottomNav from '@/components/BottomNav';
 import AppointmentCard from '@/components/AppointmentCard';
-import DoctorCard from '@/components/DoctorCard';
-import SpecialtyFilter from '@/components/SpecialtyFilter';
 import HealthProfile from '@/components/HealthProfile';
-import { doctors, appointments, specialties } from '@/data/mockData';
+import { appointments } from '@/data/mockData';
 import { useNavigate } from 'react-router-dom';
 import mamaAvatar from '@/assets/mama-avatar.png';
 
 const Home = () => {
-  const [selectedSpecialty, setSelectedSpecialty] = useState('Todos');
   const navigate = useNavigate();
-
-  const filteredDoctors = selectedSpecialty === 'Todos'
-    ? doctors
-    : doctors.filter(d => d.specialty === selectedSpecialty);
 
   return (
     <MobileLayout>
@@ -41,27 +33,56 @@ const Home = () => {
         </header>
 
         {/* Greeting */}
-        <div>
+        <div className="text-center">
           <h2 className="text-2xl font-bold text-foreground leading-tight">
-            ¿Cómo te sientes<br />hoy?
+            ¿Cómo te sientes hoy?
           </h2>
         </div>
 
         {/* Health Profile */}
         <HealthProfile />
 
-        {/* Mama Chat CTA */}
+        {/* Mama Chat CTA - Más llamativo y centrado */}
+        <div className="flex justify-center">
+          <button
+            onClick={() => navigate('/chat')}
+            className="w-full max-w-sm p-6 bg-gradient-to-br from-primary via-primary to-chart-2 rounded-3xl flex flex-col items-center gap-4 text-center shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <div className="relative">
+              <img 
+                src={mamaAvatar} 
+                alt="Mama" 
+                className="w-20 h-20 rounded-full border-4 border-primary-foreground/30 shadow-lg" 
+              />
+              <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-green-400 rounded-full flex items-center justify-center border-2 border-primary">
+                <MessageCircleHeart className="w-4 h-4 text-primary-foreground" />
+              </div>
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-primary-foreground">Habla con Mama</h3>
+              <p className="text-sm text-primary-foreground/80 mt-1">
+                Tu asistente de salud personal
+              </p>
+            </div>
+            <div className="px-6 py-2 bg-primary-foreground/20 rounded-full">
+              <span className="text-sm font-semibold text-primary-foreground">
+                💬 Cuéntame tus síntomas
+              </span>
+            </div>
+          </button>
+        </div>
+
+        {/* Medical Library CTA */}
         <button
-          onClick={() => navigate('/chat')}
-          className="w-full p-4 bg-gradient-to-r from-primary to-chart-2 rounded-2xl flex items-center gap-4 text-left hover:opacity-90 transition-opacity"
+          onClick={() => navigate('/library')}
+          className="w-full p-4 bg-card border border-border rounded-2xl flex items-center gap-4 text-left hover:bg-accent transition-colors"
         >
-          <img src={mamaAvatar} alt="Mama" className="w-14 h-14 rounded-full" />
-          <div className="flex-1">
-            <h3 className="font-semibold text-primary-foreground">Habla con Mama</h3>
-            <p className="text-sm text-primary-foreground/80">Cuéntame tus síntomas</p>
+          <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
+            <FolderOpen className="w-6 h-6 text-primary" />
           </div>
-          <div className="px-3 py-1 bg-primary-foreground/20 rounded-full">
-            <span className="text-xs font-medium text-primary-foreground">Chat</span>
+          <div className="flex-1">
+            <h3 className="font-semibold text-foreground">Biblioteca Médica</h3>
+            <p className="text-sm text-muted-foreground">Centraliza tus documentos</p>
           </div>
         </button>
 
@@ -79,26 +100,6 @@ const Home = () => {
           ) : (
             <p className="text-muted-foreground text-center py-8">No tienes citas próximas</p>
           )}
-        </section>
-
-        {/* Popular Doctors */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-foreground">Doctores Populares</h3>
-            <button className="text-sm text-primary font-medium">Ver Todos</button>
-          </div>
-          
-          <SpecialtyFilter
-            specialties={specialties}
-            selected={selectedSpecialty}
-            onSelect={setSelectedSpecialty}
-          />
-          
-          <div className="space-y-3 mt-4">
-            {filteredDoctors.slice(0, 3).map((doctor) => (
-              <DoctorCard key={doctor.id} doctor={doctor} />
-            ))}
-          </div>
         </section>
       </div>
       <BottomNav />
