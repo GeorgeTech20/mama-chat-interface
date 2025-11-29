@@ -1,14 +1,30 @@
-import { Bell, FolderOpen, MessageCircleHeart } from 'lucide-react';
+import { Bell, FolderOpen, MessageCircleHeart, LogOut } from 'lucide-react';
 import MobileLayout from '@/components/MobileLayout';
 import BottomNav from '@/components/BottomNav';
 import AppointmentCard from '@/components/AppointmentCard';
 import HealthProfile from '@/components/HealthProfile';
 import { appointments } from '@/data/mockData';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import mamaAvatar from '@/assets/mama-avatar.png';
 
 const Home = () => {
   const navigate = useNavigate();
+  const { profile, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login');
+  };
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return '¡Buenos días!';
+    if (hour < 18) return '¡Buenas tardes!';
+    return '¡Buenas noches!';
+  };
+
+  const displayName = profile?.name || 'Usuario';
 
   return (
     <MobileLayout>
@@ -22,14 +38,22 @@ const Home = () => {
               className="w-12 h-12 rounded-full object-cover border-2 border-primary"
             />
             <div>
-              <p className="text-sm text-muted-foreground">¡Buenos días!</p>
-              <h1 className="font-semibold text-foreground">Usuario</h1>
+              <p className="text-sm text-muted-foreground">{getGreeting()}</p>
+              <h1 className="font-semibold text-foreground">{displayName}</h1>
             </div>
           </div>
-          <button className="p-2 bg-card border border-border rounded-full relative hover:bg-accent transition-colors">
-            <Bell className="w-5 h-5 text-foreground" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button className="p-2 bg-card border border-border rounded-full relative hover:bg-accent transition-colors">
+              <Bell className="w-5 h-5 text-foreground" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
+            </button>
+            <button 
+              onClick={handleSignOut}
+              className="p-2 bg-card border border-border rounded-full hover:bg-destructive/10 transition-colors"
+            >
+              <LogOut className="w-5 h-5 text-muted-foreground" />
+            </button>
+          </div>
         </header>
 
         {/* Greeting */}
