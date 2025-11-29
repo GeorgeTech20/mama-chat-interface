@@ -23,6 +23,7 @@ export type Database = {
           file_size: number
           file_type: string
           id: string
+          patient_id: string | null
           user_id: string | null
         }
         Insert: {
@@ -33,6 +34,7 @@ export type Database = {
           file_size: number
           file_type: string
           id?: string
+          patient_id?: string | null
           user_id?: string | null
         }
         Update: {
@@ -43,9 +45,18 @@ export type Database = {
           file_size?: number
           file_type?: string
           id?: string
+          patient_id?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "medical_files_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       patients: {
         Row: {
