@@ -12,6 +12,9 @@ interface Profile {
   height: number;
   weight: number;
   gender: string;
+  phone?: string;
+  patient_main?: string;
+  patient_active?: string;
 }
 
 interface AuthContextType {

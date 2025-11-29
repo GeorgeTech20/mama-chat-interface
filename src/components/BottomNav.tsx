@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 const navItems = [
   { icon: Home, label: 'Inicio', path: '/' },
   { icon: MessageCircle, label: 'Mama', path: '/chat' },
-  { icon: UserCircle, label: 'Perfil', path: '/register' },
+  { icon: UserCircle, label: 'Perfil', path: '/profile' },
 ];
 
 const BottomNav = () => {

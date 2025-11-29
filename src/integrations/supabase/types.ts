@@ -47,6 +47,72 @@ export type Database = {
         }
         Relationships: []
       }
+      patients: {
+        Row: {
+          birth_date: string
+          created_at: string
+          dni: string
+          email: string | null
+          first_name: string
+          gender: string | null
+          height: number | null
+          id: string
+          last_name: string
+          phone: string | null
+          updated_at: string
+          user_creator: string | null
+          user_owner: string | null
+          weight: number | null
+        }
+        Insert: {
+          birth_date: string
+          created_at?: string
+          dni: string
+          email?: string | null
+          first_name: string
+          gender?: string | null
+          height?: number | null
+          id?: string
+          last_name: string
+          phone?: string | null
+          updated_at?: string
+          user_creator?: string | null
+          user_owner?: string | null
+          weight?: number | null
+        }
+        Update: {
+          birth_date?: string
+          created_at?: string
+          dni?: string
+          email?: string | null
+          first_name?: string
+          gender?: string | null
+          height?: number | null
+          id?: string
+          last_name?: string
+          phone?: string | null
+          updated_at?: string
+          user_creator?: string | null
+          user_owner?: string | null
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_user_creator"
+            columns: ["user_creator"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "fk_user_owner"
+            columns: ["user_owner"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           birth_date: string
@@ -56,6 +122,9 @@ export type Database = {
           height: number
           id: string
           name: string
+          patient_active: string | null
+          patient_main: string | null
+          phone: string | null
           surname: string
           updated_at: string
           user_id: string | null
@@ -69,6 +138,9 @@ export type Database = {
           height: number
           id?: string
           name: string
+          patient_active?: string | null
+          patient_main?: string | null
+          phone?: string | null
           surname: string
           updated_at?: string
           user_id?: string | null
@@ -82,18 +154,64 @@ export type Database = {
           height?: number
           id?: string
           name?: string
+          patient_active?: string | null
+          patient_main?: string | null
+          phone?: string | null
           surname?: string
           updated_at?: string
           user_id?: string | null
           weight?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_patient_active"
+            columns: ["patient_active"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_patient_main"
+            columns: ["patient_main"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      add_family_patient: {
+        Args: {
+          p_birth_date: string
+          p_dni: string
+          p_first_name: string
+          p_gender?: string
+          p_height?: number
+          p_last_name: string
+          p_relationship?: string
+          p_weight?: number
+        }
+        Returns: Json
+      }
+      create_main_patient: {
+        Args: {
+          p_birth_date: string
+          p_dni: string
+          p_email?: string
+          p_first_name: string
+          p_gender: string
+          p_height: number
+          p_last_name: string
+          p_phone?: string
+          p_user_id: string
+          p_weight: number
+        }
+        Returns: Json
+      }
       upsert_profile: {
         Args: {
           p_birth_date: string

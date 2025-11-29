@@ -1,9 +1,7 @@
 import { Bell, FolderOpen, MessageCircleHeart, LogOut } from 'lucide-react';
 import MobileLayout from '@/components/MobileLayout';
 import BottomNav from '@/components/BottomNav';
-import AppointmentCard from '@/components/AppointmentCard';
 import HealthProfile from '@/components/HealthProfile';
-import { appointments } from '@/data/mockData';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import mamaAvatar from '@/assets/mama-avatar.png';
@@ -109,22 +107,6 @@ const Home = () => {
             <p className="text-sm text-muted-foreground">Centraliza tus documentos</p>
           </div>
         </button>
-
-        {/* Upcoming Appointments */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-foreground">Próximas Citas</h3>
-            <button className="text-sm text-primary font-medium">Ver Todas</button>
-          </div>
-          {appointments.length > 0 ? (
-            <AppointmentCard
-              appointment={appointments[0]}
-              onViewProfile={() => navigate(`/doctor/${appointments[0].doctor.id}`)}
-            />
-          ) : (
-            <p className="text-muted-foreground text-center py-8">No tienes citas próximas</p>
-          )}
-        </section>
       </div>
       <BottomNav />
     </MobileLayout>
