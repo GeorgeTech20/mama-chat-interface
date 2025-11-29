@@ -2,44 +2,26 @@ import { Bell, FolderOpen, MessageCircleHeart, LogOut } from 'lucide-react';
 import MobileLayout from '@/components/MobileLayout';
 import BottomNav from '@/components/BottomNav';
 import HealthProfile from '@/components/HealthProfile';
+import PatientSelector from '@/components/PatientSelector';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import mamaAvatar from '@/assets/mama-avatar.png';
 
 const Home = () => {
   const navigate = useNavigate();
-  const { profile, signOut } = useAuth();
+  const { signOut } = useAuth();
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/login');
   };
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return '¡Buenos días!';
-    if (hour < 18) return '¡Buenas tardes!';
-    return '¡Buenas noches!';
-  };
-
-  const displayName = profile?.name || 'Usuario';
-
   return (
     <MobileLayout>
       <div className="px-4 pt-6 pb-24 space-y-6">
         {/* Header */}
         <header className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img
-              src={mamaAvatar}
-              alt="Usuario"
-              className="w-12 h-12 rounded-full object-cover border-2 border-primary"
-            />
-            <div>
-              <p className="text-sm text-muted-foreground">{getGreeting()}</p>
-              <h1 className="font-semibold text-foreground">{displayName}</h1>
-            </div>
-          </div>
+          <PatientSelector />
           <div className="flex items-center gap-2">
             <button className="p-2 bg-card border border-border rounded-full relative hover:bg-accent transition-colors">
               <Bell className="w-5 h-5 text-foreground" />
