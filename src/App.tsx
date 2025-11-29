@@ -11,6 +11,7 @@ import DoctorProfile from "./pages/DoctorProfile";
 import Login from "./pages/Login";
 import Auth from "./pages/Auth";
 import Register from "./pages/Register";
+import ResetPassword from "./pages/ResetPassword";
 import MedicalLibrary from "./pages/MedicalLibrary";
 import NotFound from "./pages/NotFound";
 
@@ -26,6 +27,7 @@ const App = () => (
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/register" element={<Register />} />
             <Route path="/" element={
               <ProtectedRoute>
@@ -45,11 +47,6 @@ const App = () => (
             <Route path="/doctor/:id" element={
               <ProtectedRoute>
                 <DoctorProfile />
-              </ProtectedRoute>
-            } />
-            <Route path="/appointments" element={
-              <ProtectedRoute>
-                <Index />
               </ProtectedRoute>
             } />
             <Route path="*" element={<NotFound />} />
