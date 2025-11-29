@@ -8,6 +8,7 @@ import { Message } from '@/types/health';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 import mamaAvatar from '@/assets/mama-avatar.png';
 
 interface ConversationState {
@@ -63,6 +64,7 @@ const defaultResponses = [
 
 const Chat = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -98,7 +100,7 @@ const Chat = () => {
     setAttachedFile(file);
   };
 
-  const uploadFile = async (file: File): Promise<boolean> => {
+  const uploadFile = async (file: File, description?: string): Promise<boolean> => {
     setIsUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
@@ -111,12 +113,18 @@ const Chat = () => {
 
       if (uploadError) throw uploadError;
 
+      // Generate a description from user context if provided
+      const fileDescription = description?.trim() 
+        ? description.trim()
+        : `Archivo subido: ${file.name}`;
+
       const { error: dbError } = await supabase.from('medical_files').insert({
         file_name: file.name,
         file_path: filePath,
         file_type: file.type,
         file_size: file.size,
-        user_id: null,
+        description: fileDescription,
+        user_id: user?.id || null,
       });
 
       if (dbError) throw dbError;
@@ -170,24 +178,41 @@ const Chat = () => {
 
     // Handle file upload if attached
     if (attachedFile) {
-      const uploaded = await uploadFile(attachedFile);
+      // Use the input text as description context for the file
+      const userContext = inputValue.trim() || undefined;
+      
+      // Show user message first if they typed something
+      if (userContext) {
+        const contextMessage: Message = {
+          id: Date.now().toString(),
+          content: userContext,
+          sender: 'user',
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, contextMessage]);
+      }
+      
+      const uploaded = await uploadFile(attachedFile, userContext);
       if (uploaded) {
         const fileMessage: Message = {
-          id: Date.now().toString(),
+          id: (Date.now() + 1).toString(),
           content: `📎 Archivo adjunto: ${attachedFile.name}`,
           sender: 'user',
           timestamp: new Date(),
         };
         setMessages((prev) => [...prev, fileMessage]);
         setAttachedFile(null);
+        setInputValue('');
         if (fileInputRef.current) fileInputRef.current.value = '';
 
         // Mama response about the file
         setIsTyping(true);
         setTimeout(() => {
           const mamaMessage: Message = {
-            id: (Date.now() + 1).toString(),
-            content: '¡Perfecto! He guardado tu archivo en tu Historia Clínica Digital. Puedes acceder a él cuando lo necesites. 📁\n\n¿Hay algo más en lo que pueda ayudarte?',
+            id: (Date.now() + 2).toString(),
+            content: userContext 
+              ? `¡Perfecto! He guardado tu archivo "${attachedFile.name}" en tu Historia Clínica Digital con la descripción que me proporcionaste. 📁\n\n¿Hay algo más en lo que pueda ayudarte?`
+              : '¡Perfecto! He guardado tu archivo en tu Historia Clínica Digital. Puedes acceder a él cuando lo necesites. 📁\n\n¿Hay algo más en lo que pueda ayudarte?',
             sender: 'mama',
             timestamp: new Date(),
           };
