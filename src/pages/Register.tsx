@@ -106,11 +106,13 @@ const getDaysInMonth = (month: number, year: number) => {
 const Register = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const emailFromLogin = location.state?.email || '';
+  const userId = location.state?.userId;
+  const emailFromAuth = location.state?.email || '';
   
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState<'next' | 'prev'>('next');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(userId);
   
   const currentYear = new Date().getFullYear();
   const [formData, setFormData] = useState({
@@ -123,8 +125,33 @@ const Register = () => {
     height: 170,
     weight: 70,
     gender: '',
-    email: emailFromLogin
+    email: emailFromAuth
   });
+
+  // Check for authenticated user on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setCurrentUserId(session.user.id);
+        
+        // Check if profile already has data
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .single();
+        
+        if (profile && profile.name) {
+          navigate('/');
+        }
+      } else if (!userId) {
+        // No authenticated user and no userId from state
+        navigate('/login');
+      }
+    };
+    checkAuth();
+  }, [navigate, userId]);
 
   const totalSteps = 6;
   
@@ -147,30 +174,65 @@ const Register = () => {
   };
 
   const handleSubmit = async () => {
+    if (!currentUserId) {
+      toast.error('No hay usuario autenticado');
+      navigate('/login');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const birthDate = `${formData.birthYear}-${String(formData.birthMonth).padStart(2, '0')}-${String(formData.birthDay).padStart(2, '0')}`;
       
-      const { error } = await supabase
+      // First check if profile exists (created by trigger)
+      const { data: existingProfile } = await supabase
         .from('profiles')
-        .insert({
-          name: formData.name.trim(),
-          surname: formData.surname.trim(),
-          dni: formData.dni.trim(),
-          birth_date: birthDate,
-          height: formData.height,
-          weight: formData.weight,
-          gender: formData.gender,
-          user_id: null
-        });
+        .select('id')
+        .eq('user_id', currentUserId)
+        .single();
 
-      if (error) {
-        if (error.code === '23505') {
-          toast.error('Este DNI ya está registrado');
-        } else {
-          toast.error('Error al registrar: ' + error.message);
+      if (existingProfile) {
+        // Update existing profile
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            name: formData.name.trim(),
+            surname: formData.surname.trim(),
+            dni: formData.dni.trim(),
+            birth_date: birthDate,
+            height: formData.height,
+            weight: formData.weight,
+            gender: formData.gender,
+          })
+          .eq('user_id', currentUserId);
+
+        if (error) {
+          toast.error('Error al actualizar perfil: ' + error.message);
+          return;
         }
-        return;
+      } else {
+        // Insert new profile
+        const { error } = await supabase
+          .from('profiles')
+          .insert({
+            name: formData.name.trim(),
+            surname: formData.surname.trim(),
+            dni: formData.dni.trim(),
+            birth_date: birthDate,
+            height: formData.height,
+            weight: formData.weight,
+            gender: formData.gender,
+            user_id: currentUserId
+          });
+
+        if (error) {
+          if (error.code === '23505') {
+            toast.error('Este DNI ya está registrado');
+          } else {
+            toast.error('Error al registrar: ' + error.message);
+          }
+          return;
+        }
       }
 
       toast.success('¡Registro completado!');
@@ -200,7 +262,9 @@ const Register = () => {
     }
   };
 
-  const handleClose = () => {
+  const handleClose = async () => {
+    // Sign out if user cancels registration
+    await supabase.auth.signOut();
     navigate('/login');
   };
 
