@@ -11,9 +11,11 @@ import { z } from 'zod';
 const emailSchema = z.string().email('Email inválido');
 const passwordSchema = z.string().min(6, 'La contraseña debe tener al menos 6 caracteres');
 
+type AuthMode = 'login' | 'signup' | 'forgot-password';
+
 const Auth = () => {
   const navigate = useNavigate();
-  const [isLogin, setIsLogin] = useState(true);
+  const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -32,30 +34,60 @@ const Auth = () => {
       }
     }
 
-    try {
-      passwordSchema.parse(password);
-    } catch (e) {
-      if (e instanceof z.ZodError) {
-        newErrors.password = e.errors[0].message;
+    if (mode !== 'forgot-password') {
+      try {
+        passwordSchema.parse(password);
+      } catch (e) {
+        if (e instanceof z.ZodError) {
+          newErrors.password = e.errors[0].message;
+        }
       }
-    }
 
-    if (!isLogin && password !== confirmPassword) {
-      newErrors.confirmPassword = 'Las contraseñas no coinciden';
+      if (mode === 'signup' && password !== confirmPassword) {
+        newErrors.confirmPassword = 'Las contraseñas no coinciden';
+      }
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleForgotPassword = async () => {
     if (!validateForm()) return;
 
     setIsLoading(true);
     try {
-      if (isLogin) {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth?mode=reset`,
+      });
+
+      if (error) {
+        toast.error('Error al enviar el email: ' + error.message);
+        return;
+      }
+
+      toast.success('¡Email enviado! Revisa tu bandeja de entrada para restablecer tu contraseña.');
+      setMode('login');
+    } catch (err) {
+      toast.error('Error de conexión');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (mode === 'forgot-password') {
+      await handleForgotPassword();
+      return;
+    }
+
+    if (!validateForm()) return;
+
+    setIsLoading(true);
+    try {
+      if (mode === 'login') {
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password
@@ -114,13 +146,38 @@ const Auth = () => {
     }
   };
 
+  const getTitle = () => {
+    switch (mode) {
+      case 'login': return 'Iniciar sesión';
+      case 'signup': return 'Crear cuenta';
+      case 'forgot-password': return 'Recuperar contraseña';
+    }
+  };
+
+  const getSubtitle = () => {
+    switch (mode) {
+      case 'login': return 'Ingresa tus credenciales';
+      case 'signup': return 'Crea tu cuenta con email';
+      case 'forgot-password': return 'Te enviaremos un enlace de recuperación';
+    }
+  };
+
+  const getButtonText = () => {
+    if (isLoading) return 'Cargando...';
+    switch (mode) {
+      case 'login': return 'Iniciar sesión';
+      case 'signup': return 'Crear cuenta';
+      case 'forgot-password': return 'Enviar enlace';
+    }
+  };
+
   return (
     <MobileLayout showNav={false}>
       <div className="min-h-screen bg-background flex flex-col">
         {/* Header */}
         <div className="flex items-center p-4">
           <button
-            onClick={() => navigate('/login')}
+            onClick={() => mode === 'forgot-password' ? setMode('login') : navigate('/login')}
             className="p-2 text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -130,10 +187,10 @@ const Auth = () => {
         {/* Content */}
         <div className="flex-1 px-6 py-8">
           <h1 className="text-2xl font-semibold text-center text-foreground mb-2">
-            {isLogin ? 'Iniciar sesión' : 'Crear cuenta'}
+            {getTitle()}
           </h1>
           <p className="text-center text-muted-foreground mb-8">
-            {isLogin ? 'Ingresa tus credenciales' : 'Crea tu cuenta con email'}
+            {getSubtitle()}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -150,39 +207,43 @@ const Auth = () => {
               )}
             </div>
 
-            <div className="relative">
-              <Input
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Contraseña"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="h-12 bg-muted/50 border-0 pr-12"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-              >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-              {errors.password && (
-                <p className="text-destructive text-sm mt-1">{errors.password}</p>
-              )}
-            </div>
+            {mode !== 'forgot-password' && (
+              <>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Contraseña"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-12 bg-muted/50 border-0 pr-12"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                  {errors.password && (
+                    <p className="text-destructive text-sm mt-1">{errors.password}</p>
+                  )}
+                </div>
 
-            {!isLogin && (
-              <div>
-                <Input
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Confirmar contraseña"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="h-12 bg-muted/50 border-0"
-                />
-                {errors.confirmPassword && (
-                  <p className="text-destructive text-sm mt-1">{errors.confirmPassword}</p>
+                {mode === 'signup' && (
+                  <div>
+                    <Input
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Confirmar contraseña"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="h-12 bg-muted/50 border-0"
+                    />
+                    {errors.confirmPassword && (
+                      <p className="text-destructive text-sm mt-1">{errors.confirmPassword}</p>
+                    )}
+                  </div>
                 )}
-              </div>
+              </>
             )}
 
             <Button
@@ -190,20 +251,36 @@ const Auth = () => {
               className="w-full h-12"
               disabled={isLoading}
             >
-              {isLoading ? 'Cargando...' : isLogin ? 'Iniciar sesión' : 'Crear cuenta'}
+              {getButtonText()}
             </Button>
           </form>
 
+          {mode === 'login' && (
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => {
+                  setMode('forgot-password');
+                  setErrors({});
+                }}
+                className="text-muted-foreground hover:text-foreground text-sm"
+              >
+                ¿Olvidaste tu contraseña?
+              </button>
+            </div>
+          )}
+
           <div className="mt-6 text-center">
-            <button
-              onClick={() => {
-                setIsLogin(!isLogin);
-                setErrors({});
-              }}
-              className="text-primary hover:underline text-sm"
-            >
-              {isLogin ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión'}
-            </button>
+            {mode !== 'forgot-password' && (
+              <button
+                onClick={() => {
+                  setMode(mode === 'login' ? 'signup' : 'login');
+                  setErrors({});
+                }}
+                className="text-primary hover:underline text-sm"
+              >
+                {mode === 'login' ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión'}
+              </button>
+            )}
           </div>
         </div>
       </div>
