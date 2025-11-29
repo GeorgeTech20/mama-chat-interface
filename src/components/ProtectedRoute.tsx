@@ -20,8 +20,8 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     return <Navigate to="/login" replace />;
   }
 
-  // If user is authenticated but has no profile, redirect to register
-  if (!profile || !profile.name) {
+  // If user is authenticated but profile is incomplete (no name or no dni), redirect to register
+  if (!profile || !profile.name || !profile.dni) {
     return <Navigate to="/register" replace />;
   }
 
