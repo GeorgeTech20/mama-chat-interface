@@ -85,7 +85,7 @@ const Home = () => {
             <FolderOpen className="w-6 h-6 text-primary" />
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-foreground">Biblioteca Médica</h3>
+            <h3 className="font-semibold text-foreground">Historia Clínica Digital</h3>
             <p className="text-sm text-muted-foreground">Centraliza tus documentos</p>
           </div>
         </button>

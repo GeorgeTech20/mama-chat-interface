@@ -202,7 +202,7 @@ const MedicalLibrary = () => {
           <ArrowLeft className="w-5 h-5 text-foreground" />
         </button>
         <div>
-          <h1 className="font-semibold text-foreground">Biblioteca Médica</h1>
+          <h1 className="font-semibold text-foreground">Historia Clínica Digital</h1>
           <p className="text-xs text-muted-foreground">Tus archivos médicos centralizados</p>
         </div>
       </header>
@@ -210,7 +210,7 @@ const MedicalLibrary = () => {
       <div className="px-4 py-6 pb-32 space-y-6">
         {/* Upload Section */}
         <Card className="border-dashed border-2 border-primary/30 bg-primary/5">
-          <CardContent className="p-6">
+          <CardContent className="p-3">
             <input
               ref={fileInputRef}
               type="file"
@@ -221,21 +221,21 @@ const MedicalLibrary = () => {
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
-              className="w-full flex flex-col items-center gap-3 py-4"
+              className="w-full flex items-center gap-3 py-2"
             >
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
                 {isUploading ? (
-                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  <Plus className="w-8 h-8 text-primary" />
+                  <Plus className="w-5 h-5 text-primary" />
                 )}
               </div>
-              <div className="text-center">
-                <p className="font-medium text-foreground">
+              <div className="text-left">
+                <p className="font-medium text-foreground text-sm">
                   {isUploading ? 'Subiendo...' : 'Subir archivo'}
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  Imágenes (JPG, PNG) o PDF • Max 10MB
+                <p className="text-xs text-muted-foreground">
+                  JPG, PNG o PDF • Max 10MB
                 </p>
               </div>
             </button>
