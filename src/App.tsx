@@ -13,6 +13,7 @@ import Auth from "./pages/Auth";
 import Register from "./pages/Register";
 import ResetPassword from "./pages/ResetPassword";
 import MedicalLibrary from "./pages/MedicalLibrary";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,11 @@ const App = () => (
             <Route path="/doctor/:id" element={
               <ProtectedRoute>
                 <DoctorProfile />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <Profile />
               </ProtectedRoute>
             } />
             <Route path="*" element={<NotFound />} />
