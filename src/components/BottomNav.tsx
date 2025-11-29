@@ -1,4 +1,4 @@
-import { Home, Calendar, MessageCircle, FolderOpen } from 'lucide-react';
+import { Home, Calendar, MessageCircle } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
@@ -6,7 +6,6 @@ const navItems = [
   { icon: Home, label: 'Inicio', path: '/' },
   { icon: Calendar, label: 'Citas', path: '/appointments' },
   { icon: MessageCircle, label: 'Mama', path: '/chat' },
-  { icon: FolderOpen, label: 'Archivos', path: '/library' },
 ];
 
 const BottomNav = () => {
