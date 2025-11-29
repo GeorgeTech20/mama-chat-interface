@@ -8,6 +8,7 @@ import Chat from "./pages/Chat";
 import DoctorProfile from "./pages/DoctorProfile";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import MedicalLibrary from "./pages/MedicalLibrary";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +24,7 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/chat" element={<Chat />} />
+          <Route path="/library" element={<MedicalLibrary />} />
           <Route path="/doctor/:id" element={<DoctorProfile />} />
           <Route path="/appointments" element={<Index />} />
           <Route path="*" element={<NotFound />} />
