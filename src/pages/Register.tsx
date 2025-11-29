@@ -206,8 +206,8 @@ const Register = () => {
 
       const birthDate = `${formData.birthYear}-${String(formData.birthMonth).padStart(2, '0')}-${String(formData.birthDay).padStart(2, '0')}`;
       
-      // Use RPC function to bypass RLS issues while maintaining security
-      const { error } = await supabase.rpc('upsert_profile', {
+      // First, update the profile with basic info
+      const { error: profileError } = await supabase.rpc('upsert_profile', {
         p_user_id: session.user.id,
         p_name: formData.name.trim(),
         p_surname: formData.surname.trim(),
@@ -218,14 +218,32 @@ const Register = () => {
         p_gender: formData.gender,
       });
 
-      if (error) {
-        if (error.code === '23505' || error.message.includes('dni')) {
+      if (profileError) {
+        if (profileError.code === '23505' || profileError.message.includes('dni')) {
           toast.error('Este DNI ya está registrado');
         } else {
-          console.error('Profile upsert error:', error);
-          toast.error('Error al guardar perfil: ' + error.message);
+          console.error('Profile upsert error:', profileError);
+          toast.error('Error al guardar perfil: ' + profileError.message);
         }
         return;
+      }
+
+      // Then create the main patient record
+      const { error: patientError } = await supabase.rpc('create_main_patient', {
+        p_user_id: session.user.id,
+        p_dni: formData.dni.trim(),
+        p_first_name: formData.name.trim(),
+        p_last_name: formData.surname.trim(),
+        p_birth_date: birthDate,
+        p_height: formData.height,
+        p_weight: formData.weight,
+        p_gender: formData.gender,
+        p_email: session.user.email || null
+      });
+
+      if (patientError) {
+        console.error('Patient creation error:', patientError);
+        // Don't block registration if patient creation fails, profile is already saved
       }
 
       toast.success('¡Registro completado!');
