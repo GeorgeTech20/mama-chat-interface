@@ -137,15 +137,27 @@ const Register = () => {
       if (session?.user) {
         setCurrentUserId(session.user.id);
         
-        // Check if profile already has data
+        // Check if profile already has data and is complete
         const { data: profile } = await supabase
           .from('profiles')
           .select('*')
           .eq('user_id', session.user.id)
-          .single();
+          .maybeSingle();
         
-        if (profile && profile.name) {
+        // Profile is complete if it has name AND dni
+        if (profile && profile.name && profile.dni) {
           navigate('/');
+          return;
+        }
+        
+        // Pre-fill form with Google data if available
+        if (profile?.name && !formData.name) {
+          const names = profile.name.split(' ');
+          setFormData(prev => ({
+            ...prev,
+            name: names[0] || '',
+            surname: names.slice(1).join(' ') || prev.surname,
+          }));
         }
       } else if (!userId) {
         // No authenticated user and no userId from state
@@ -184,63 +196,48 @@ const Register = () => {
 
     setIsSubmitting(true);
     try {
+      // Verify we have an active session before proceeding
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Sesión expirada, por favor inicia sesión nuevamente');
+        navigate('/login');
+        return;
+      }
+
       const birthDate = `${formData.birthYear}-${String(formData.birthMonth).padStart(2, '0')}-${String(formData.birthDay).padStart(2, '0')}`;
       
-      // First check if profile exists (created by trigger)
-      const { data: existingProfile } = await supabase
+      // Use upsert to handle both insert and update cases
+      // This works whether the profile was created by trigger or not
+      const { error } = await supabase
         .from('profiles')
-        .select('id')
-        .eq('user_id', currentUserId)
-        .single();
+        .upsert({
+          user_id: session.user.id, // Use session.user.id directly
+          name: formData.name.trim(),
+          surname: formData.surname.trim(),
+          dni: formData.dni.trim(),
+          birth_date: birthDate,
+          height: formData.height,
+          weight: formData.weight,
+          gender: formData.gender,
+        }, {
+          onConflict: 'user_id'
+        });
 
-      if (existingProfile) {
-        // Update existing profile
-        const { error } = await supabase
-          .from('profiles')
-          .update({
-            name: formData.name.trim(),
-            surname: formData.surname.trim(),
-            dni: formData.dni.trim(),
-            birth_date: birthDate,
-            height: formData.height,
-            weight: formData.weight,
-            gender: formData.gender,
-          })
-          .eq('user_id', currentUserId);
-
-        if (error) {
-          toast.error('Error al actualizar perfil: ' + error.message);
-          return;
+      if (error) {
+        if (error.code === '23505') {
+          toast.error('Este DNI ya está registrado');
+        } else {
+          console.error('Profile upsert error:', error);
+          toast.error('Error al guardar perfil: ' + error.message);
         }
-      } else {
-        // Insert new profile
-        const { error } = await supabase
-          .from('profiles')
-          .insert({
-            name: formData.name.trim(),
-            surname: formData.surname.trim(),
-            dni: formData.dni.trim(),
-            birth_date: birthDate,
-            height: formData.height,
-            weight: formData.weight,
-            gender: formData.gender,
-            user_id: currentUserId
-          });
-
-        if (error) {
-          if (error.code === '23505') {
-            toast.error('Este DNI ya está registrado');
-          } else {
-            toast.error('Error al registrar: ' + error.message);
-          }
-          return;
-        }
+        return;
       }
 
       toast.success('¡Registro completado!');
       await refreshProfile();
       navigate('/');
     } catch (err) {
+      console.error('Registration error:', err);
       toast.error('Error de conexión');
     } finally {
       setIsSubmitting(false);
