@@ -1,25 +1,94 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MobileLayout from '@/components/MobileLayout';
 import { Button } from '@/components/ui/button';
 import { Heart } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const Login = () => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleGoogleSignIn = () => {
-    setEmail('usuario@gmail.com');
-    navigate('/register', { state: { email: 'usuario@gmail.com' } });
+  useEffect(() => {
+    // Check if user is already logged in
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        // Check if profile exists
+        setTimeout(async () => {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('name')
+            .eq('user_id', session.user.id)
+            .single();
+          
+          if (profile && profile.name) {
+            navigate('/');
+          } else {
+            navigate('/register', { state: { userId: session.user.id, email: session.user.email } });
+          }
+        }, 0);
+      }
+    });
+
+    // Check existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        supabase.from('profiles')
+          .select('name')
+          .eq('user_id', session.user.id)
+          .single()
+          .then(({ data: profile }) => {
+            if (profile && profile.name) {
+              navigate('/');
+            }
+          });
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/register`
+        }
+      });
+      if (error) {
+        toast.error('Error al iniciar sesión con Google: ' + error.message);
+      }
+    } catch (err) {
+      toast.error('Error de conexión');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleAppleSignIn = () => {
-    setEmail('usuario@icloud.com');
-    navigate('/register', { state: { email: 'usuario@icloud.com' } });
+  const handleAppleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'apple',
+        options: {
+          redirectTo: `${window.location.origin}/register`
+        }
+      });
+      if (error) {
+        toast.error('Error al iniciar sesión con Apple: ' + error.message);
+      }
+    } catch (err) {
+      toast.error('Error de conexión');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleEmailSignIn = () => {
-    navigate('/register', { state: { email: '' } });
+    navigate('/auth');
   };
 
   const handleSkip = () => {
@@ -62,6 +131,7 @@ const Login = () => {
             variant="outline"
             className="w-full h-12 gap-3 bg-background hover:bg-muted border-border"
             onClick={handleAppleSignIn}
+            disabled={isLoading}
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
               <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
@@ -74,6 +144,7 @@ const Login = () => {
             variant="outline"
             className="w-full h-12 gap-3 bg-background hover:bg-muted border-border"
             onClick={handleGoogleSignIn}
+            disabled={isLoading}
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -88,6 +159,7 @@ const Login = () => {
             className="w-full h-12 bg-muted hover:bg-muted/80 text-muted-foreground"
             variant="secondary"
             onClick={handleEmailSignIn}
+            disabled={isLoading}
           >
             Continuar con email
           </Button>
