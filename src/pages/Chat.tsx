@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { useActivePatient } from '@/hooks/useActivePatient';
 import mamaAvatar from '@/assets/mama-avatar.png';
 
 interface ConversationState {
@@ -64,7 +65,8 @@ const defaultResponses = [
 
 const Chat = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const { activePatient } = useActivePatient();
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -125,6 +127,7 @@ const Chat = () => {
         file_size: file.size,
         description: fileDescription,
         user_id: user?.id || null,
+        patient_id: activePatient?.id || profile?.patient_active || null,
       });
 
       if (dbError) throw dbError;
