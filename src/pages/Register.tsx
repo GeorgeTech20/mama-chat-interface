@@ -4,6 +4,8 @@ import MobileLayout from '@/components/MobileLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { X } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 // Scroll Picker Component
 interface ScrollPickerProps {
@@ -96,6 +98,11 @@ const FemaleIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+// Helper function to get days in month
+const getDaysInMonth = (month: number, year: number) => {
+  return new Date(year, month, 0).getDate();
+};
+
 const Register = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -103,11 +110,16 @@ const Register = () => {
   
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState<'next' | 'prev'>('next');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const currentYear = new Date().getFullYear();
   const [formData, setFormData] = useState({
     name: '',
     surname: '',
     dni: '',
-    age: 25,
+    birthDay: 15,
+    birthMonth: 6,
+    birthYear: 1995,
     height: 170,
     weight: 70,
     gender: '',
@@ -117,18 +129,65 @@ const Register = () => {
   const totalSteps = 6;
   
   // Generate value ranges
-  const ages = Array.from({ length: 83 }, (_, i) => i + 18); // 18-100
-  const heights = Array.from({ length: 81 }, (_, i) => i + 140); // 140-220 cm
-  const weights = Array.from({ length: 121 }, (_, i) => i + 30); // 30-150 kg
+  const days = Array.from({ length: getDaysInMonth(formData.birthMonth, formData.birthYear) }, (_, i) => i + 1);
+  const years = Array.from({ length: 100 }, (_, i) => currentYear - 100 + i).reverse();
+  const heights = Array.from({ length: 81 }, (_, i) => i + 140);
+  const weights = Array.from({ length: 121 }, (_, i) => i + 30);
+
+  // Calculate age from birth date
+  const calculateAge = () => {
+    const birthDate = new Date(formData.birthYear, formData.birthMonth - 1, formData.birthDay);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      const birthDate = `${formData.birthYear}-${String(formData.birthMonth).padStart(2, '0')}-${String(formData.birthDay).padStart(2, '0')}`;
+      
+      const { error } = await supabase
+        .from('profiles')
+        .insert({
+          name: formData.name.trim(),
+          surname: formData.surname.trim(),
+          dni: formData.dni.trim(),
+          birth_date: birthDate,
+          height: formData.height,
+          weight: formData.weight,
+          gender: formData.gender,
+          user_id: null
+        });
+
+      if (error) {
+        if (error.code === '23505') {
+          toast.error('Este DNI ya está registrado');
+        } else {
+          toast.error('Error al registrar: ' + error.message);
+        }
+        return;
+      }
+
+      toast.success('¡Registro completado!');
+      navigate('/');
+    } catch (err) {
+      toast.error('Error de conexión');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleNext = () => {
     if (step < totalSteps) {
       setDirection('next');
       setStep(step + 1);
     } else {
-      // Submit form
-      console.log('Registro completo:', formData);
-      navigate('/');
+      handleSubmit();
     }
   };
 
@@ -148,8 +207,8 @@ const Register = () => {
   const canProceed = () => {
     switch (step) {
       case 1: return formData.name.trim() !== '' && formData.surname.trim() !== '';
-      case 2: return formData.dni.trim() !== '';
-      case 3: return formData.age > 0;
+      case 2: return formData.dni.trim().length >= 7;
+      case 3: return formData.birthDay > 0 && formData.birthMonth > 0 && formData.birthYear > 0;
       case 4: return formData.height > 0;
       case 5: return formData.weight > 0;
       case 6: return formData.gender !== '';
@@ -196,7 +255,7 @@ const Register = () => {
               <Input
                 placeholder="12345678"
                 value={formData.dni}
-                onChange={(e) => setFormData({ ...formData, dni: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, dni: e.target.value.replace(/\D/g, '') })}
                 className="h-14 text-lg text-center bg-muted/50 border-0"
                 maxLength={8}
               />
@@ -208,13 +267,58 @@ const Register = () => {
         return (
           <div key="step3" className={`space-y-6 ${animationClass}`}>
             <h2 className="text-2xl font-semibold text-center text-foreground">
-              ¿Cuántos años tienes?
+              ¿Cuál es tu fecha de nacimiento?
             </h2>
-            <ScrollPicker
-              values={ages}
-              selected={formData.age}
-              onChange={(value) => setFormData({ ...formData, age: Number(value) })}
-            />
+            <p className="text-center text-muted-foreground text-sm">
+              Tendrás {calculateAge()} años
+            </p>
+            <div className="flex gap-2 pt-4">
+              {/* Day Picker */}
+              <div className="flex-1">
+                <p className="text-center text-xs text-muted-foreground mb-2">Día</p>
+                <ScrollPicker
+                  values={days}
+                  selected={formData.birthDay}
+                  onChange={(value) => setFormData({ ...formData, birthDay: Number(value) })}
+                />
+              </div>
+              
+              {/* Month Picker */}
+              <div className="flex-1">
+                <p className="text-center text-xs text-muted-foreground mb-2">Mes</p>
+                <ScrollPicker
+                  values={Array.from({ length: 12 }, (_, i) => i + 1)}
+                  selected={formData.birthMonth}
+                  onChange={(value) => {
+                    const newMonth = Number(value);
+                    const maxDays = getDaysInMonth(newMonth, formData.birthYear);
+                    setFormData({ 
+                      ...formData, 
+                      birthMonth: newMonth,
+                      birthDay: Math.min(formData.birthDay, maxDays)
+                    });
+                  }}
+                />
+              </div>
+              
+              {/* Year Picker */}
+              <div className="flex-1">
+                <p className="text-center text-xs text-muted-foreground mb-2">Año</p>
+                <ScrollPicker
+                  values={years}
+                  selected={formData.birthYear}
+                  onChange={(value) => {
+                    const newYear = Number(value);
+                    const maxDays = getDaysInMonth(formData.birthMonth, newYear);
+                    setFormData({ 
+                      ...formData, 
+                      birthYear: newYear,
+                      birthDay: Math.min(formData.birthDay, maxDays)
+                    });
+                  }}
+                />
+              </div>
+            </div>
           </div>
         );
 
@@ -327,13 +431,14 @@ const Register = () => {
         <div className="p-6 space-y-3">
           <Button
             onClick={handleNext}
-            disabled={!canProceed()}
+            disabled={!canProceed() || isSubmitting}
             className="w-full h-12"
           >
-            {step === totalSteps ? 'Completar' : 'Siguiente'}
+            {isSubmitting ? 'Guardando...' : step === totalSteps ? 'Completar' : 'Siguiente'}
           </Button>
           <button
             onClick={handlePrev}
+            disabled={isSubmitting}
             className="w-full py-3 text-muted-foreground hover:text-foreground transition-colors text-sm"
           >
             {step === 1 ? 'Cancelar' : 'Anterior'}
