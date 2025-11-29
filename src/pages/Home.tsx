@@ -14,10 +14,12 @@ const Home = () => {
         {/* Header */}
         <header className="w-full flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div>
-              <p className="text-sm text-muted-foreground">¡Bienvenido!</p>
-              <h1 className="font-semibold text-foreground">Tu asistente de salud</h1>
-            </div>
+            <img 
+              src={mamaAvatar} 
+              alt="Mama" 
+              className="w-10 h-10 rounded-full" 
+            />
+            <p className="text-sm text-muted-foreground">¡Bienvenido!</p>
           </div>
           <button className="p-2 bg-card border border-border rounded-full relative hover:bg-accent transition-colors">
             <Bell className="w-5 h-5 text-foreground" />
