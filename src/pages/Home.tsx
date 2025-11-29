@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { Bell, FolderOpen, MessageCircleHeart, LogOut } from 'lucide-react';
 import MobileLayout from '@/components/MobileLayout';
 import BottomNav from '@/components/BottomNav';
 import HealthProfile from '@/components/HealthProfile';
 import PatientSelector from '@/components/PatientSelector';
+import MamaModal from '@/components/MamaModal';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import mamaAvatar from '@/assets/mama-avatar.png';
@@ -10,6 +12,7 @@ import mamaAvatar from '@/assets/mama-avatar.png';
 const Home = () => {
   const navigate = useNavigate();
   const { signOut } = useAuth();
+  const [showMamaModal, setShowMamaModal] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -36,43 +39,25 @@ const Home = () => {
           </div>
         </header>
 
-        {/* Greeting */}
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-foreground leading-tight">
-            ¿Cómo te sientes hoy?
-          </h2>
-        </div>
-
         {/* Health Profile */}
         <HealthProfile />
 
-        {/* Mama Chat CTA - Más llamativo y centrado */}
+        {/* Mama Chat CTA - Minimalista */}
         <div className="flex justify-center">
           <button
-            onClick={() => navigate('/chat')}
-            className="w-full max-w-sm p-6 bg-gradient-to-br from-primary via-primary to-chart-2 rounded-3xl flex flex-col items-center gap-4 text-center shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
+            onClick={() => setShowMamaModal(true)}
+            className="w-full max-w-sm p-5 bg-card border border-border rounded-2xl flex items-center gap-4 hover:bg-accent transition-all"
           >
-            <div className="relative">
-              <img 
-                src={mamaAvatar} 
-                alt="Mama" 
-                className="w-20 h-20 rounded-full border-4 border-primary-foreground/30 shadow-lg" 
-              />
-              <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-green-400 rounded-full flex items-center justify-center border-2 border-primary">
-                <MessageCircleHeart className="w-4 h-4 text-primary-foreground" />
-              </div>
+            <img 
+              src={mamaAvatar} 
+              alt="Mama" 
+              className="w-14 h-14 rounded-full" 
+            />
+            <div className="text-left flex-1">
+              <h3 className="font-semibold text-foreground">Habla con Mama</h3>
+              <p className="text-sm text-muted-foreground">Tu asistente de salud</p>
             </div>
-            <div>
-              <h3 className="text-xl font-bold text-primary-foreground">Habla con Mama</h3>
-              <p className="text-sm text-primary-foreground/80 mt-1">
-                Tu asistente de salud personal
-              </p>
-            </div>
-            <div className="px-6 py-2 bg-primary-foreground/20 rounded-full">
-              <span className="text-sm font-semibold text-primary-foreground">
-                💬 Cuéntame tus síntomas
-              </span>
-            </div>
+            <MessageCircleHeart className="w-6 h-6 text-primary" />
           </button>
         </div>
 
@@ -90,6 +75,8 @@ const Home = () => {
           </div>
         </button>
       </div>
+
+      <MamaModal open={showMamaModal} onOpenChange={setShowMamaModal} />
       <BottomNav />
     </MobileLayout>
   );
