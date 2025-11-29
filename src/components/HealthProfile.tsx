@@ -1,11 +1,11 @@
 import { Heart, User, UserRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/AuthContext';
+import { useActivePatient } from '@/hooks/useActivePatient';
 
 const HealthProfile = () => {
-  const { profile } = useAuth();
+  const { activePatient, loading } = useActivePatient();
 
-  if (!profile) {
+  if (loading) {
     return (
       <div className="bg-card rounded-3xl p-4 border border-border">
         <p className="text-muted-foreground text-center">Cargando perfil...</p>
@@ -13,7 +13,15 @@ const HealthProfile = () => {
     );
   }
 
-  const { height, weight, gender, birth_date } = profile;
+  if (!activePatient) {
+    return (
+      <div className="bg-card rounded-3xl p-4 border border-border">
+        <p className="text-muted-foreground text-center">Sin paciente activo</p>
+      </div>
+    );
+  }
+
+  const { height, weight, gender, birth_date } = activePatient;
 
   // Calculate age from birth_date
   const calculateAge = () => {
@@ -31,6 +39,7 @@ const HealthProfile = () => {
   const age = calculateAge();
 
   const calculateBMI = () => {
+    if (!height || !weight) return null;
     const h = height / 100; // cm to m
     if (h > 0 && weight > 0) {
       return (weight / (h * h)).toFixed(1);
@@ -55,7 +64,10 @@ const HealthProfile = () => {
           <div className="p-2 bg-destructive/10 rounded-full">
             <Heart className="w-5 h-5 text-destructive fill-destructive" />
           </div>
-          <h3 className="font-semibold text-foreground">Tu Perfil de Salud</h3>
+          <div>
+            <h3 className="font-semibold text-foreground">{activePatient.first_name}</h3>
+            <p className="text-xs text-muted-foreground">Perfil de Salud</p>
+          </div>
         </div>
         
         {/* Gender Icon - Read Only */}
@@ -74,11 +86,11 @@ const HealthProfile = () => {
       {/* Stats Grid - Read Only */}
       <div className="grid grid-cols-3 gap-3 mb-4">
         <div className="bg-background rounded-xl p-3 text-center">
-          <p className="text-lg font-bold text-foreground">{height}</p>
+          <p className="text-lg font-bold text-foreground">{height || '-'}</p>
           <p className="text-xs text-muted-foreground">cm</p>
         </div>
         <div className="bg-background rounded-xl p-3 text-center">
-          <p className="text-lg font-bold text-foreground">{weight}</p>
+          <p className="text-lg font-bold text-foreground">{weight || '-'}</p>
           <p className="text-xs text-muted-foreground">kg</p>
         </div>
         <div className="bg-background rounded-xl p-3 text-center">
