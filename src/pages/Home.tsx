@@ -6,6 +6,7 @@ import SearchBar from '@/components/SearchBar';
 import AppointmentCard from '@/components/AppointmentCard';
 import DoctorCard from '@/components/DoctorCard';
 import SpecialtyFilter from '@/components/SpecialtyFilter';
+import HealthProfile from '@/components/HealthProfile';
 import { doctors, appointments, specialties } from '@/data/mockData';
 import { useNavigate } from 'react-router-dom';
 import mamaAvatar from '@/assets/mama-avatar.png';
@@ -55,6 +56,9 @@ const Home = () => {
           placeholder="Buscar doctor, medicina..."
         />
 
+        {/* Health Profile */}
+        <HealthProfile />
+
         {/* Mama Chat CTA */}
         <button
           onClick={() => navigate('/chat')}
@@ -63,7 +67,7 @@ const Home = () => {
           <img src={mamaAvatar} alt="Mama" className="w-14 h-14 rounded-full" />
           <div className="flex-1">
             <h3 className="font-semibold text-primary-foreground">Habla con Mama</h3>
-            <p className="text-sm text-primary-foreground/80">Tu asistente de salud 24/7</p>
+            <p className="text-sm text-primary-foreground/80">Cuéntame tus síntomas</p>
           </div>
           <div className="px-3 py-1 bg-primary-foreground/20 rounded-full">
             <span className="text-xs font-medium text-primary-foreground">Chat</span>
