@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Bell } from 'lucide-react';
 import MobileLayout from '@/components/MobileLayout';
 import BottomNav from '@/components/BottomNav';
-import SearchBar from '@/components/SearchBar';
 import AppointmentCard from '@/components/AppointmentCard';
 import DoctorCard from '@/components/DoctorCard';
 import SpecialtyFilter from '@/components/SpecialtyFilter';
@@ -12,7 +11,6 @@ import { useNavigate } from 'react-router-dom';
 import mamaAvatar from '@/assets/mama-avatar.png';
 
 const Home = () => {
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState('Todos');
   const navigate = useNavigate();
 
@@ -48,13 +46,6 @@ const Home = () => {
             ¿Cómo te sientes<br />hoy?
           </h2>
         </div>
-
-        {/* Search */}
-        <SearchBar
-          value={searchQuery}
-          onChange={setSearchQuery}
-          placeholder="Buscar doctor, medicina..."
-        />
 
         {/* Health Profile */}
         <HealthProfile />
