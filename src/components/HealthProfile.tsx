@@ -1,18 +1,24 @@
-import { useState } from 'react';
 import { Heart, User, UserRound } from 'lucide-react';
-import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
+// Mock user data - this would come from registration/auth
+const userData = {
+  name: 'Usuario',
+  lastName: 'Demo',
+  dni: '12345678',
+  height: 170, // cm
+  weight: 70, // kg
+  age: 28,
+  gender: 'male' as 'male' | 'female',
+};
+
 const HealthProfile = () => {
-  const [height, setHeight] = useState('');
-  const [weight, setWeight] = useState('');
-  const [gender, setGender] = useState<'male' | 'female' | null>(null);
+  const { height, weight, gender } = userData;
 
   const calculateBMI = () => {
-    const h = parseFloat(height) / 100; // cm to m
-    const w = parseFloat(weight);
-    if (h > 0 && w > 0) {
-      return (w / (h * h)).toFixed(1);
+    const h = height / 100; // cm to m
+    if (h > 0 && weight > 0) {
+      return (weight / (h * h)).toFixed(1);
     }
     return null;
   };
@@ -29,65 +35,40 @@ const HealthProfile = () => {
 
   return (
     <div className="bg-card rounded-3xl p-4 border border-border">
-      <div className="flex items-center gap-2 mb-4">
-        <div className="p-2 bg-destructive/10 rounded-full">
-          <Heart className="w-5 h-5 text-destructive fill-destructive" />
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <div className="p-2 bg-destructive/10 rounded-full">
+            <Heart className="w-5 h-5 text-destructive fill-destructive" />
+          </div>
+          <h3 className="font-semibold text-foreground">Tu Perfil de Salud</h3>
         </div>
-        <h3 className="font-semibold text-foreground">Tu Perfil de Salud</h3>
-      </div>
-
-      {/* Gender Selection */}
-      <div className="mb-4">
-        <p className="text-sm text-muted-foreground mb-2">Género</p>
-        <div className="flex gap-3">
-          <button
-            onClick={() => setGender('male')}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border transition-all",
-              gender === 'male'
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-background border-border text-foreground hover:bg-accent"
-            )}
-          >
-            <User className="w-5 h-5" />
-            <span className="text-sm font-medium">Hombre</span>
-          </button>
-          <button
-            onClick={() => setGender('female')}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border transition-all",
-              gender === 'female'
-                ? "bg-pink-500 text-primary-foreground border-pink-500"
-                : "bg-background border-border text-foreground hover:bg-accent"
-            )}
-          >
-            <UserRound className="w-5 h-5" />
-            <span className="text-sm font-medium">Mujer</span>
-          </button>
+        
+        {/* Gender Icon - Read Only */}
+        <div className={cn(
+          "p-2 rounded-full",
+          gender === 'male' ? "bg-primary/10" : "bg-pink-500/10"
+        )}>
+          {gender === 'male' ? (
+            <User className="w-5 h-5 text-primary" />
+          ) : (
+            <UserRound className="w-5 h-5 text-pink-500" />
+          )}
         </div>
       </div>
 
-      {/* Height & Weight */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <div>
-          <p className="text-sm text-muted-foreground mb-2">Altura (cm)</p>
-          <Input
-            type="number"
-            placeholder="170"
-            value={height}
-            onChange={(e) => setHeight(e.target.value)}
-            className="bg-background border-border rounded-xl"
-          />
+      {/* Stats Grid - Read Only */}
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="bg-background rounded-xl p-3 text-center">
+          <p className="text-lg font-bold text-foreground">{height}</p>
+          <p className="text-xs text-muted-foreground">cm</p>
         </div>
-        <div>
-          <p className="text-sm text-muted-foreground mb-2">Peso (kg)</p>
-          <Input
-            type="number"
-            placeholder="70"
-            value={weight}
-            onChange={(e) => setWeight(e.target.value)}
-            className="bg-background border-border rounded-xl"
-          />
+        <div className="bg-background rounded-xl p-3 text-center">
+          <p className="text-lg font-bold text-foreground">{weight}</p>
+          <p className="text-xs text-muted-foreground">kg</p>
+        </div>
+        <div className="bg-background rounded-xl p-3 text-center">
+          <p className="text-lg font-bold text-foreground">{userData.age}</p>
+          <p className="text-xs text-muted-foreground">años</p>
         </div>
       </div>
 
