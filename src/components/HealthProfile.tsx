@@ -1,19 +1,34 @@
 import { Heart, User, UserRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-// Mock user data - this would come from registration/auth
-const userData = {
-  name: 'Usuario',
-  lastName: 'Demo',
-  dni: '12345678',
-  height: 170, // cm
-  weight: 70, // kg
-  age: 28,
-  gender: 'male' as 'male' | 'female',
-};
+import { useAuth } from '@/contexts/AuthContext';
 
 const HealthProfile = () => {
-  const { height, weight, gender } = userData;
+  const { profile } = useAuth();
+
+  if (!profile) {
+    return (
+      <div className="bg-card rounded-3xl p-4 border border-border">
+        <p className="text-muted-foreground text-center">Cargando perfil...</p>
+      </div>
+    );
+  }
+
+  const { height, weight, gender, birth_date } = profile;
+
+  // Calculate age from birth_date
+  const calculateAge = () => {
+    if (!birth_date) return 0;
+    const today = new Date();
+    const birthDate = new Date(birth_date);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const age = calculateAge();
 
   const calculateBMI = () => {
     const h = height / 100; // cm to m
@@ -67,7 +82,7 @@ const HealthProfile = () => {
           <p className="text-xs text-muted-foreground">kg</p>
         </div>
         <div className="bg-background rounded-xl p-3 text-center">
-          <p className="text-lg font-bold text-foreground">{userData.age}</p>
+          <p className="text-lg font-bold text-foreground">{age}</p>
           <p className="text-xs text-muted-foreground">años</p>
         </div>
       </div>

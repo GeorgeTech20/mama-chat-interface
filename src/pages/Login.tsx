@@ -91,10 +91,6 @@ const Login = () => {
     navigate('/auth');
   };
 
-  const handleSkip = () => {
-    navigate('/');
-  };
-
   return (
     <MobileLayout showNav={false}>
       <div className="min-h-screen flex flex-col relative">
@@ -106,13 +102,7 @@ const Login = () => {
           <div className="absolute bottom-1/3 left-4 w-16 h-16 rounded-full bg-primary-foreground/5" />
         </div>
 
-        {/* Skip button */}
-        <button
-          onClick={handleSkip}
-          className="absolute top-4 right-4 text-primary-foreground/80 hover:text-primary-foreground text-sm font-medium z-10 px-3 py-1"
-        >
-          Skip
-        </button>
+        {/* Skip button removed - now using protected routes */}
 
         {/* Hero Section - Center */}
         <div className="flex-1 flex flex-col items-center justify-center px-8 text-center relative z-10">

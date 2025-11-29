@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Scroll Picker Component
 interface ScrollPickerProps {
@@ -106,8 +107,9 @@ const getDaysInMonth = (month: number, year: number) => {
 const Register = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const userId = location.state?.userId;
-  const emailFromAuth = location.state?.email || '';
+  const { user, refreshProfile } = useAuth();
+  const userId = location.state?.userId || user?.id;
+  const emailFromAuth = location.state?.email || user?.email || '';
   
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState<'next' | 'prev'>('next');
@@ -236,6 +238,7 @@ const Register = () => {
       }
 
       toast.success('¡Registro completado!');
+      await refreshProfile();
       navigate('/');
     } catch (err) {
       toast.error('Error de conexión');
