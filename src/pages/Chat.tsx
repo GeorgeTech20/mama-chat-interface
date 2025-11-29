@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Send, Smile } from 'lucide-react';
+import { ArrowLeft, Send, Paperclip, X, FileText, Image as ImageIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import MobileLayout from '@/components/MobileLayout';
 import BottomNav from '@/components/BottomNav';
 import { Input } from '@/components/ui/input';
 import { Message } from '@/types/health';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import mamaAvatar from '@/assets/mama-avatar.png';
 
 interface ConversationState {
@@ -65,7 +67,10 @@ const Chat = () => {
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [conversationContext, setConversationContext] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -74,6 +79,58 @@ const Chat = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Solo se permiten imágenes (JPG, PNG) y PDFs');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('El tamaño máximo es 10MB');
+      return;
+    }
+
+    setAttachedFile(file);
+  };
+
+  const uploadFile = async (file: File): Promise<boolean> => {
+    setIsUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `uploads/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('medical-files')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { error: dbError } = await supabase.from('medical_files').insert({
+        file_name: file.name,
+        file_path: filePath,
+        file_type: file.type,
+        file_size: file.size,
+        user_id: null,
+      });
+
+      if (dbError) throw dbError;
+
+      toast.success('Archivo guardado en tu historia clínica');
+      return true;
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast.error('Error al subir el archivo');
+      return false;
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const generateResponse = (userMessage: string): string => {
     const lowerMessage = userMessage.toLowerCase();
@@ -108,8 +165,38 @@ const Chat = () => {
     return defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
   };
 
-  const handleSend = () => {
-    if (!inputValue.trim()) return;
+  const handleSend = async () => {
+    if (!inputValue.trim() && !attachedFile) return;
+
+    // Handle file upload if attached
+    if (attachedFile) {
+      const uploaded = await uploadFile(attachedFile);
+      if (uploaded) {
+        const fileMessage: Message = {
+          id: Date.now().toString(),
+          content: `📎 Archivo adjunto: ${attachedFile.name}`,
+          sender: 'user',
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, fileMessage]);
+        setAttachedFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+
+        // Mama response about the file
+        setIsTyping(true);
+        setTimeout(() => {
+          const mamaMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            content: '¡Perfecto! He guardado tu archivo en tu Historia Clínica Digital. Puedes acceder a él cuando lo necesites. 📁\n\n¿Hay algo más en lo que pueda ayudarte?',
+            sender: 'mama',
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, mamaMessage]);
+          setIsTyping(false);
+        }, 1000);
+      }
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -224,9 +311,40 @@ const Chat = () => {
 
       {/* Input */}
       <div className="fixed bottom-16 left-1/2 -translate-x-1/2 w-full max-w-md px-4 py-3 bg-background border-t border-border">
+        {/* Attached file preview */}
+        {attachedFile && (
+          <div className="flex items-center gap-2 mb-2 p-2 bg-primary/10 rounded-lg">
+            {attachedFile.type.includes('pdf') ? (
+              <FileText className="w-5 h-5 text-primary" />
+            ) : (
+              <ImageIcon className="w-5 h-5 text-primary" />
+            )}
+            <span className="text-sm text-foreground truncate flex-1">{attachedFile.name}</span>
+            <button
+              onClick={() => {
+                setAttachedFile(null);
+                if (fileInputRef.current) fileInputRef.current.value = '';
+              }}
+              className="p-1 hover:bg-primary/20 rounded-full"
+            >
+              <X className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
+        )}
         <div className="flex items-center gap-2">
-          <button className="p-2 text-muted-foreground hover:text-foreground transition-colors">
-            <Smile className="w-6 h-6" />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,application/pdf"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            className="p-2 text-muted-foreground hover:text-primary transition-colors"
+          >
+            <Paperclip className="w-6 h-6" />
           </button>
           <Input
             value={inputValue}
@@ -237,10 +355,14 @@ const Chat = () => {
           />
           <button
             onClick={handleSend}
-            disabled={!inputValue.trim()}
+            disabled={(!inputValue.trim() && !attachedFile) || isUploading}
             className="p-3 bg-primary text-primary-foreground rounded-full disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
           >
-            <Send className="w-5 h-5" />
+            {isUploading ? (
+              <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Send className="w-5 h-5" />
+            )}
           </button>
         </div>
       </div>
