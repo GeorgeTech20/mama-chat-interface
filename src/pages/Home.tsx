@@ -42,24 +42,22 @@ const Home = () => {
         {/* Health Profile */}
         <HealthProfile />
 
-        {/* Mama Chat CTA - Minimalista */}
-        <div className="flex justify-center">
-          <button
-            onClick={() => setShowMamaModal(true)}
-            className="w-full max-w-sm p-5 bg-card border border-border rounded-2xl flex items-center gap-4 hover:bg-accent transition-all"
-          >
-            <img 
-              src={mamaAvatar} 
-              alt="Mama" 
-              className="w-14 h-14 rounded-full" 
-            />
-            <div className="text-left flex-1">
-              <h3 className="font-semibold text-foreground">Habla con Mama</h3>
-              <p className="text-sm text-muted-foreground">Tu asistente de salud</p>
-            </div>
-            <MessageCircleHeart className="w-6 h-6 text-primary" />
-          </button>
-        </div>
+        {/* Mama Chat Button */}
+        <button
+          onClick={() => setShowMamaModal(true)}
+          className="w-full p-4 bg-card border border-border rounded-2xl flex items-center gap-4 hover:bg-accent/50 transition-colors shadow-sm"
+        >
+          <img 
+            src={mamaAvatar} 
+            alt="Mama" 
+            className="w-12 h-12 rounded-full" 
+          />
+          <div className="text-left flex-1">
+            <h3 className="font-semibold text-foreground">Habla con Mama</h3>
+            <p className="text-sm text-muted-foreground">Tu asistente de salud</p>
+          </div>
+          <MessageCircleHeart className="w-6 h-6 text-primary" />
+        </button>
 
         {/* Medical Library CTA */}
         <button
