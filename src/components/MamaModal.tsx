@@ -1,6 +1,5 @@
-import { useState } from 'react';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useNavigate } from 'react-router-dom';
+import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import mamaAvatar from '@/assets/mama-avatar.png';
 import { SmilePlus, Frown } from 'lucide-react';
 
@@ -18,23 +17,23 @@ const MamaModal = ({ open, onOpenChange }: MamaModalProps) => {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm rounded-3xl border-none bg-card p-8">
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent className="px-6 pb-8 pt-4">
         <div className="flex flex-col items-center gap-6 text-center">
           {/* Avatar */}
           <img 
             src={mamaAvatar} 
             alt="Mama" 
-            className="w-24 h-24 rounded-full shadow-md" 
+            className="w-20 h-20 rounded-full shadow-md" 
           />
           
           {/* Title */}
-          <DialogTitle className="text-xl font-semibold text-foreground">
+          <DrawerTitle className="text-xl font-semibold text-foreground">
             ¿Cómo te sientes hoy?
-          </DialogTitle>
+          </DrawerTitle>
 
           {/* Options */}
-          <div className="flex gap-4 w-full">
+          <div className="flex gap-4 w-full max-w-xs">
             <button
               onClick={() => handleOption('good')}
               className="flex-1 flex flex-col items-center gap-2 p-4 rounded-2xl bg-green-500/10 hover:bg-green-500/20 transition-colors border border-green-500/20"
@@ -51,8 +50,8 @@ const MamaModal = ({ open, onOpenChange }: MamaModalProps) => {
             </button>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 };
 
