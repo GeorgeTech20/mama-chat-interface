@@ -138,8 +138,9 @@ const Register = () => {
       return;
     }
     
-    // If profile is already complete, redirect to home
-    if (profile && profile.name && profile.dni) {
+    // If profile is already complete (has name AND dni/patient_main), redirect to home
+    const isProfileComplete = profile && profile.name && (profile.dni || profile.patient_main);
+    if (isProfileComplete) {
       navigate('/', { replace: true });
       return;
     }
