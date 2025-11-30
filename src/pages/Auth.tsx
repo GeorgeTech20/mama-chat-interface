@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MobileLayout from '@/components/MobileLayout';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { useAuth } from '@/contexts/AuthContext';
 
 const emailSchema = z.string().email('Email inválido');
 const passwordSchema = z.string().min(6, 'La contraseña debe tener al menos 6 caracteres');
@@ -22,6 +23,20 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; confirmPassword?: string }>({});
+  const { user, profile, loading } = useAuth();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (loading) return;
+    
+    if (user) {
+      if (profile && profile.name && profile.dni) {
+        navigate('/', { replace: true });
+      } else {
+        navigate('/register', { replace: true });
+      }
+    }
+  }, [user, profile, loading, navigate]);
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string; confirmPassword?: string } = {};
@@ -88,7 +103,7 @@ const Auth = () => {
     setIsLoading(true);
     try {
       if (mode === 'login') {
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
           email,
           password
         });
@@ -99,29 +114,18 @@ const Auth = () => {
           } else {
             toast.error('Error al iniciar sesión: ' + error.message);
           }
+          setIsLoading(false);
           return;
         }
 
-        if (data.user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('name')
-            .eq('user_id', data.user.id)
-            .single();
-
-          if (profile && profile.name) {
-            toast.success('¡Bienvenido de nuevo!');
-            navigate('/');
-          } else {
-            navigate('/register', { state: { userId: data.user.id, email: data.user.email } });
-          }
-        }
+        toast.success('¡Bienvenido de nuevo!');
+        // Navigation is handled by useEffect watching AuthContext
       } else {
-        const { data, error } = await supabase.auth.signUp({
+        const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/register`
+            emailRedirectTo: `${window.location.origin}/`
           }
         });
 
@@ -131,17 +135,15 @@ const Auth = () => {
           } else {
             toast.error('Error al registrar: ' + error.message);
           }
+          setIsLoading(false);
           return;
         }
 
-        if (data.user) {
-          toast.success('¡Cuenta creada! Completa tu perfil.');
-          navigate('/register', { state: { userId: data.user.id, email: data.user.email } });
-        }
+        toast.success('¡Cuenta creada! Completa tu perfil.');
+        // Navigation is handled by useEffect watching AuthContext
       }
     } catch (err) {
       toast.error('Error de conexión');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -170,6 +172,15 @@ const Auth = () => {
       case 'forgot-password': return 'Enviar enlace';
     }
   };
+
+  // Show loading only while checking auth and we might redirect
+  if (loading && user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <MobileLayout showNav={false}>

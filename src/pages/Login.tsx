@@ -5,49 +5,36 @@ import { Button } from '@/components/ui/button';
 import loginBackground from '@/assets/login-background.png';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Login = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const { user, profile, loading } = useAuth();
 
   useEffect(() => {
-    // Check if user is already logged in
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) {
-        // Check if profile exists
-        setTimeout(async () => {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('name')
-            .eq('user_id', session.user.id)
-            .single();
-          
-          if (profile && profile.name) {
-            navigate('/');
-          } else {
-            navigate('/register', { state: { userId: session.user.id, email: session.user.email } });
-          }
-        }, 0);
+    // Only redirect after AuthContext has finished loading
+    if (loading) return;
+    
+    if (user) {
+      if (profile && profile.name && profile.dni) {
+        // Profile complete, go to home
+        navigate('/', { replace: true });
+      } else {
+        // Profile incomplete, go to register
+        navigate('/register', { replace: true });
       }
-    });
+    }
+  }, [user, profile, loading, navigate]);
 
-    // Check existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        supabase.from('profiles')
-          .select('name')
-          .eq('user_id', session.user.id)
-          .single()
-          .then(({ data: profile }) => {
-            if (profile && profile.name) {
-              navigate('/');
-            }
-          });
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+  // Show loading only if we have a user (meaning we're about to redirect)
+  if (loading && user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
@@ -55,7 +42,7 @@ const Login = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/register`
+          redirectTo: `${window.location.origin}/`
         }
       });
       if (error) {
