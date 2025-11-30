@@ -116,8 +116,8 @@ const Login = () => {
           </h1>
         </div>
 
-        {/* Bottom Login Section - Dark card */}
-        <div className="relative z-10 bg-card rounded-t-3xl p-6 pb-8 space-y-3">
+        {/* Bottom Login Section - Transparent card */}
+        <div className="relative z-10 bg-card/80 backdrop-blur-md rounded-t-3xl p-6 pb-8 space-y-3">
           <Button
             type="button"
             variant="outline"
