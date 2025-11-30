@@ -303,10 +303,21 @@ const Register = () => {
     navigate('/login');
   };
 
+  // Validation functions
+  const isValidDNI = (dni: string) => {
+    // DNI peruano: exactly 8 digits
+    return /^\d{8}$/.test(dni);
+  };
+
+  const isValidName = (name: string) => {
+    // At least 2 characters, only letters and spaces
+    return name.trim().length >= 2 && /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(name.trim());
+  };
+
   const canProceed = () => {
     switch (step) {
-      case 1: return formData.name.trim() !== '' && formData.surname.trim() !== '';
-      case 2: return formData.dni.trim().length >= 7;
+      case 1: return isValidName(formData.name) && isValidName(formData.surname);
+      case 2: return isValidDNI(formData.dni);
       case 3: return formData.birthDay > 0 && formData.birthMonth > 0 && formData.birthYear > 0;
       case 4: return formData.height > 0;
       case 5: return formData.weight > 0;
