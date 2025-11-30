@@ -123,11 +123,11 @@ const Auth = () => {
         toast.success('¡Bienvenido de nuevo!');
         // Navigation is handled by useEffect watching AuthContext
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/`
+            emailRedirectTo: `${window.location.origin}/register`
           }
         });
 
@@ -138,6 +138,15 @@ const Auth = () => {
             toast.error('Error al registrar: ' + error.message);
           }
           setIsLoading(false);
+          return;
+        }
+
+        // Check if email confirmation is required
+        // If user exists but session is null, confirmation is pending
+        if (data?.user && !data?.session) {
+          toast.success('¡Revisa tu email! Te enviamos un enlace para confirmar tu cuenta.');
+          setIsLoading(false);
+          setMode('login');
           return;
         }
 
