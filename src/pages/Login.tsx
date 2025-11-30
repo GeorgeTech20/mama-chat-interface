@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import MobileLayout from '@/components/MobileLayout';
 import { Button } from '@/components/ui/button';
 import loginBackground from '@/assets/login-background.png';
-import vidaLogo from '@/assets/vida-logo.png';
+import vidaLogo from '@/assets/vida-logo-new.png';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -81,7 +81,7 @@ const Login = () => {
           <img 
             src={vidaLogo} 
             alt="Vida" 
-            className="h-16 w-auto mb-2"
+            className="h-24 w-auto mb-2"
           />
           <p className="text-lg font-serif text-primary-foreground/90 mt-2 italic">
             Tu salud acompañada
