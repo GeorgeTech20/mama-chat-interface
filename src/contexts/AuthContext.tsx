@@ -46,18 +46,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = useCallback(async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string): Promise<boolean> => {
     try {
       const { data, error } = await supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle();
       
       if (data) {
         setProfile(data);
+        return true;
       } else {
         setProfile(null);
+        return false;
       }
     } catch (err) {
       console.error("[AuthContext] Error fetching profile:", err);
       setProfile(null);
+      return false;
     }
   }, []);
 
@@ -87,17 +90,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        // Use setTimeout to avoid Supabase deadlock
-        setTimeout(() => {
+        // Fetch profile and THEN set loading to false
+        setTimeout(async () => {
           if (isMounted) {
-            fetchProfile(session.user.id);
+            await fetchProfile(session.user.id);
+            if (isMounted) {
+              setLoading(false);
+            }
           }
         }, 0);
       } else {
         setProfile(null);
+        setLoading(false);
       }
-      
-      setLoading(false);
     });
 
     // THEN check for existing session
