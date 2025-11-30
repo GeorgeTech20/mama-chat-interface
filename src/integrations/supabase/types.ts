@@ -266,68 +266,6 @@ export type Database = {
         }
         Relationships: []
       }
-      medical_documents: {
-        Row: {
-          content_type: string
-          created_at: string
-          deleted_at: string | null
-          description: string | null
-          document_type: string
-          extracted_text: string | null
-          file_data: string
-          file_name: string
-          file_size: number
-          id: number
-          patient_id: number
-          processed: boolean
-          updated_at: string | null
-          uploaded_at: string
-          version: number | null
-        }
-        Insert: {
-          content_type: string
-          created_at?: string
-          deleted_at?: string | null
-          description?: string | null
-          document_type: string
-          extracted_text?: string | null
-          file_data: string
-          file_name: string
-          file_size: number
-          id?: number
-          patient_id: number
-          processed?: boolean
-          updated_at?: string | null
-          uploaded_at?: string
-          version?: number | null
-        }
-        Update: {
-          content_type?: string
-          created_at?: string
-          deleted_at?: string | null
-          description?: string | null
-          document_type?: string
-          extracted_text?: string | null
-          file_data?: string
-          file_name?: string
-          file_size?: number
-          id?: number
-          patient_id?: number
-          processed?: boolean
-          updated_at?: string | null
-          uploaded_at?: string
-          version?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_medical_document_patient"
-            columns: ["patient_id"]
-            isOneToOne: false
-            referencedRelation: "patients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       medical_files: {
         Row: {
           created_at: string
