@@ -1,4 +1,4 @@
-import { Heart, User, UserRound } from 'lucide-react';
+import { Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useActivePatient } from '@/hooks/useActivePatient';
 
@@ -59,27 +59,12 @@ const HealthProfile = () => {
 
   return (
     <div className="bg-card rounded-3xl p-4 border border-border">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div className="p-2 bg-destructive/10 rounded-full">
-            <Heart className="w-5 h-5 text-destructive fill-destructive" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-foreground">{activePatient.first_name}</h3>
-            <p className="text-xs text-muted-foreground">Perfil de Salud</p>
-          </div>
+      <div className="flex items-center gap-2 mb-4">
+        <div className="p-2 bg-destructive/10 rounded-full">
+          <Heart className="w-5 h-5 text-destructive fill-destructive" />
         </div>
-        
-        {/* Gender Icon - Read Only */}
-        <div className={cn(
-          "p-2 rounded-full",
-          gender === 'male' ? "bg-primary/10" : "bg-pink-500/10"
-        )}>
-          {gender === 'male' ? (
-            <User className="w-5 h-5 text-primary" />
-          ) : (
-            <UserRound className="w-5 h-5 text-pink-500" />
-          )}
+        <div>
+          <h3 className="font-semibold text-foreground">Perfil de Salud</h3>
         </div>
       </div>
 

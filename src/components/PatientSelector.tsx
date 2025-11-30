@@ -105,7 +105,7 @@ const PatientSelector = () => {
 
   const activePatient = patients.find(p => p.id === profile?.patient_active);
   const displayName = activePatient 
-    ? `${activePatient.first_name} ${activePatient.last_name}`
+    ? activePatient.first_name
     : profile?.name || 'Usuario';
 
   const getGreeting = () => {

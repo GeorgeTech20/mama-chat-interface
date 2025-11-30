@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, FolderOpen, MessageCircleHeart, LogOut } from 'lucide-react';
+import { FolderOpen, MessageCircleHeart, LogOut } from 'lucide-react';
 import MobileLayout from '@/components/MobileLayout';
 import BottomNav from '@/components/BottomNav';
 import HealthProfile from '@/components/HealthProfile';
@@ -25,18 +25,12 @@ const Home = () => {
         {/* Header */}
         <header className="flex items-center justify-between">
           <PatientSelector />
-          <div className="flex items-center gap-2">
-            <button className="p-2 bg-card border border-border rounded-full relative hover:bg-accent transition-colors">
-              <Bell className="w-5 h-5 text-foreground" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
-            </button>
-            <button 
-              onClick={handleSignOut}
-              className="p-2 bg-card border border-border rounded-full hover:bg-destructive/10 transition-colors"
-            >
-              <LogOut className="w-5 h-5 text-muted-foreground" />
-            </button>
-          </div>
+          <button 
+            onClick={handleSignOut}
+            className="p-2 bg-card border border-border rounded-full hover:bg-destructive/10 transition-colors"
+          >
+            <LogOut className="w-5 h-5 text-muted-foreground" />
+          </button>
         </header>
 
         {/* Health Profile */}
@@ -53,7 +47,7 @@ const Home = () => {
             className="w-12 h-12 rounded-full" 
           />
           <div className="text-left flex-1">
-            <h3 className="font-semibold text-foreground">Habla con Mama</h3>
+            <h3 className="font-semibold text-foreground">Habla con Mamá</h3>
             <p className="text-sm text-muted-foreground">Tu asistente de salud</p>
           </div>
           <MessageCircleHeart className="w-6 h-6 text-primary" />
