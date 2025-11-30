@@ -45,20 +45,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [profileFetchPending, setProfileFetchPending] = useState(false);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   const fetchProfile = useCallback(async (userId: string) => {
-    console.log('[AuthContext] Fetching profile for user:', userId);
     try {
       const { data, error } = await supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle();
-
-      console.log('[AuthContext] Profile fetch result:', { data, error });
       
       if (data) {
         setProfile(data);
       } else {
-        // No profile found - this is expected for new users
-        console.log('[AuthContext] No profile found for user');
         setProfile(null);
       }
     } catch (err) {
@@ -80,50 +75,52 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setProfile(null);
   };
 
-  // Handle profile fetching when user changes
   useEffect(() => {
-    if (profileFetchPending && user?.id) {
-      fetchProfile(user.id).then(() => {
-        setProfileFetchPending(false);
-        setLoading(false);
-      });
-    } else if (profileFetchPending && !user) {
-      setProfileFetchPending(false);
-      setLoading(false);
-    }
-  }, [profileFetchPending, user, fetchProfile]);
+    let isMounted = true;
 
-  useEffect(() => {
-    // Set up auth state listener FIRST
+    // Get initial session first
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!isMounted) return;
+      
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        await fetchProfile(session.user.id);
+      }
+      
+      if (isMounted) {
+        setLoading(false);
+        setInitialLoadDone(true);
+      }
+    });
+
+    // Set up auth state listener for subsequent changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted || !initialLoadDone) return;
+      
       setSession(session);
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        // Schedule profile fetch via effect to avoid deadlock
-        setProfileFetchPending(true);
+        // Use setTimeout to avoid Supabase deadlock
+        setTimeout(() => {
+          if (isMounted) {
+            fetchProfile(session.user.id);
+          }
+        }, 0);
       } else {
         setProfile(null);
-        setLoading(false);
       }
     });
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        setProfileFetchPending(true);
-      } else {
-        setLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [fetchProfile, initialLoadDone]);
 
   return (
     <AuthContext.Provider value={{ user, session, profile, loading, signOut, refreshProfile }}>

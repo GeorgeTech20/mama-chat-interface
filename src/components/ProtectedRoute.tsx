@@ -8,8 +8,6 @@ interface ProtectedRouteProps {
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { user, profile, loading } = useAuth();
 
-  console.log('[ProtectedRoute] State:', { loading, userId: user?.id, profile: profile ? { name: profile.name, dni: profile.dni, patient_main: profile.patient_main } : null });
-
   // Show loading while auth state is being determined
   if (loading) {
     return (
@@ -21,18 +19,14 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   // No user = redirect to login
   if (!user) {
-    console.log('[ProtectedRoute] No user, redirecting to login');
     return <Navigate to="/login" replace />;
   }
 
   // Profile is complete if it has name AND (dni OR patient_main linked)
   const isProfileComplete = profile && profile.name && (profile.dni || profile.patient_main);
   
-  console.log('[ProtectedRoute] Profile complete check:', { isProfileComplete });
-  
   // If profile incomplete, redirect to registration
   if (!isProfileComplete) {
-    console.log('[ProtectedRoute] Profile incomplete, redirecting to register');
     return <Navigate to="/register" replace />;
   }
 
