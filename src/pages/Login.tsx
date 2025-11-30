@@ -81,7 +81,7 @@ const Login = () => {
           <img 
             src={vidaLogo} 
             alt="Vida" 
-            className="h-28 w-auto mb-4"
+            className="h-20 w-auto mb-4"
           />
           <p className="text-lg font-serif text-primary-foreground/90 mt-2 italic">
             Tu salud acompañada
