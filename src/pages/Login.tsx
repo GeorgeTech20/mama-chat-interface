@@ -80,8 +80,8 @@ const Login = () => {
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{ backgroundImage: `url(${loginBackground})` }}
         >
-          {/* Overlay for better text readability */}
-          <div className="absolute inset-0 bg-black/30" />
+          {/* Gradient overlay for shadow effect */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
         </div>
 
         {/* Skip button removed - now using protected routes */}
