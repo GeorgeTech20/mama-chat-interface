@@ -130,20 +130,37 @@ const Register = () => {
   // Handle auth state and form initialization
   useEffect(() => {
     // Wait for AuthContext to finish loading
-    if (loading) return;
+    if (loading) {
+      console.log('[Register] Still loading auth...');
+      return;
+    }
+    
+    console.log('[Register] Auth loaded:', { 
+      userId: user?.id, 
+      profileName: profile?.name, 
+      profileDni: profile?.dni, 
+      profilePatientMain: profile?.patient_main 
+    });
     
     // If no user, redirect to login
     if (!user) {
+      console.log('[Register] No user, redirecting to login');
       navigate('/login', { replace: true });
       return;
     }
     
     // If profile is already complete (has name AND dni/patient_main), redirect to home
     const isProfileComplete = profile && profile.name && (profile.dni || profile.patient_main);
+    console.log('[Register] Profile complete check:', isProfileComplete);
+    
     if (isProfileComplete) {
+      console.log('[Register] Profile complete, redirecting to home');
       navigate('/', { replace: true });
       return;
     }
+    
+    // At this point, user exists but profile is incomplete - proceed with registration
+    console.log('[Register] Profile incomplete, showing registration form');
     
     // Pre-fill form data from profile or OAuth metadata
     let firstName = '';
@@ -183,6 +200,7 @@ const Register = () => {
     
     // Skip to DNI step if we have name from OAuth and no DNI yet
     if (firstName && (!profile || !profile.dni)) {
+      console.log('[Register] Skipping to DNI step');
       setStep(2);
     }
     
