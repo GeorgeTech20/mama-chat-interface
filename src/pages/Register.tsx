@@ -150,14 +150,22 @@ const Register = () => {
           return;
         }
         
-        // Pre-fill form with Google data if available
-        if (profile?.name && !formData.name) {
+        // Pre-fill form with Google data if available and skip to DNI step
+        if (profile?.name) {
           const names = profile.name.split(' ');
+          const firstName = names[0] || '';
+          const lastName = names.slice(1).join(' ') || '';
+          
           setFormData(prev => ({
             ...prev,
-            name: names[0] || '',
-            surname: names.slice(1).join(' ') || prev.surname,
+            name: firstName,
+            surname: lastName,
           }));
+          
+          // If we already have name data from OAuth, skip to DNI step
+          if (firstName && !profile.dni) {
+            setStep(2);
+          }
         }
       } else if (!userId) {
         // No authenticated user and no userId from state
