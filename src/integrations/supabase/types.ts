@@ -266,46 +266,64 @@ export type Database = {
         }
         Relationships: []
       }
-      medical_files: {
+      medical_documents: {
         Row: {
+          content_type: string
           created_at: string
+          deleted_at: string | null
           description: string | null
+          document_type: string
+          extracted_text: string | null
+          file_data: string
           file_name: string
-          file_path: string
           file_size: number
-          file_type: string
-          id: string
-          patient_id: string | null
-          user_id: string | null
+          id: number
+          patient_id: number
+          processed: boolean
+          updated_at: string | null
+          uploaded_at: string
+          version: number | null
         }
         Insert: {
+          content_type: string
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
+          document_type: string
+          extracted_text?: string | null
+          file_data: string
           file_name: string
-          file_path: string
           file_size: number
-          file_type: string
-          id?: string
-          patient_id?: string | null
-          user_id?: string | null
+          id?: number
+          patient_id: number
+          processed?: boolean
+          updated_at?: string | null
+          uploaded_at?: string
+          version?: number | null
         }
         Update: {
+          content_type?: string
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
+          document_type?: string
+          extracted_text?: string | null
+          file_data?: string
           file_name?: string
-          file_path?: string
           file_size?: number
-          file_type?: string
-          id?: string
-          patient_id?: string | null
-          user_id?: string | null
+          id?: number
+          patient_id?: number
+          processed?: boolean
+          updated_at?: string | null
+          uploaded_at?: string
+          version?: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "medical_files_patient_id_fkey"
+            foreignKeyName: "fk_medical_document_patient"
             columns: ["patient_id"]
             isOneToOne: false
-            referencedRelation: "patients_app"
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]
@@ -434,129 +452,6 @@ export type Database = {
           },
         ]
       }
-      patients_app: {
-        Row: {
-          backend_patient_id: number | null
-          birth_date: string
-          created_at: string
-          dni: string
-          email: string | null
-          first_name: string
-          gender: string | null
-          height: number | null
-          id: string
-          last_name: string
-          phone: string | null
-          updated_at: string
-          user_creator: string | null
-          user_owner: string | null
-          weight: number | null
-        }
-        Insert: {
-          backend_patient_id?: number | null
-          birth_date: string
-          created_at?: string
-          dni: string
-          email?: string | null
-          first_name: string
-          gender?: string | null
-          height?: number | null
-          id?: string
-          last_name: string
-          phone?: string | null
-          updated_at?: string
-          user_creator?: string | null
-          user_owner?: string | null
-          weight?: number | null
-        }
-        Update: {
-          backend_patient_id?: number | null
-          birth_date?: string
-          created_at?: string
-          dni?: string
-          email?: string | null
-          first_name?: string
-          gender?: string | null
-          height?: number | null
-          id?: string
-          last_name?: string
-          phone?: string | null
-          updated_at?: string
-          user_creator?: string | null
-          user_owner?: string | null
-          weight?: number | null
-        }
-        Relationships: []
-      }
-      profiles: {
-        Row: {
-          backend_user_id: number | null
-          birth_date: string
-          created_at: string
-          dni: string
-          gender: string
-          height: number
-          id: string
-          name: string
-          patient_active: string | null
-          patient_main: string | null
-          phone: string | null
-          surname: string
-          updated_at: string
-          user_id: string
-          weight: number
-        }
-        Insert: {
-          backend_user_id?: number | null
-          birth_date?: string
-          created_at?: string
-          dni?: string
-          gender?: string
-          height?: number
-          id?: string
-          name?: string
-          patient_active?: string | null
-          patient_main?: string | null
-          phone?: string | null
-          surname?: string
-          updated_at?: string
-          user_id: string
-          weight?: number
-        }
-        Update: {
-          backend_user_id?: number | null
-          birth_date?: string
-          created_at?: string
-          dni?: string
-          gender?: string
-          height?: number
-          id?: string
-          name?: string
-          patient_active?: string | null
-          patient_main?: string | null
-          phone?: string | null
-          surname?: string
-          updated_at?: string
-          user_id?: string
-          weight?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_patient_active"
-            columns: ["patient_active"]
-            isOneToOne: false
-            referencedRelation: "patients_app"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_patient_main"
-            columns: ["patient_main"]
-            isOneToOne: false
-            referencedRelation: "patients_app"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       symptoms: {
         Row: {
           assessment_id: number
@@ -663,47 +558,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      add_family_patient: {
-        Args: {
-          p_birth_date: string
-          p_dni: string
-          p_first_name: string
-          p_gender?: string
-          p_height?: number
-          p_last_name: string
-          p_relationship?: string
-          p_weight?: number
-        }
-        Returns: Json
-      }
-      create_main_patient: {
-        Args: {
-          p_birth_date: string
-          p_dni: string
-          p_email?: string
-          p_first_name: string
-          p_gender: string
-          p_height: number
-          p_last_name: string
-          p_phone?: string
-          p_user_id: string
-          p_weight: number
-        }
-        Returns: Json
-      }
-      upsert_profile: {
-        Args: {
-          p_birth_date: string
-          p_dni: string
-          p_gender: string
-          p_height: number
-          p_name: string
-          p_surname: string
-          p_user_id: string
-          p_weight: number
-        }
-        Returns: Json
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never
