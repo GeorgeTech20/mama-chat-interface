@@ -48,17 +48,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [profileFetchPending, setProfileFetchPending] = useState(false);
 
   const fetchProfile = useCallback(async (userId: string) => {
+    console.log('[AuthContext] Fetching profile for user:', userId);
     try {
       const { data, error } = await supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle();
 
+      console.log('[AuthContext] Profile fetch result:', { data, error });
+      
       if (data) {
         setProfile(data);
       } else {
         // No profile found - this is expected for new users
+        console.log('[AuthContext] No profile found for user');
         setProfile(null);
       }
     } catch (err) {
-      console.error("Error fetching profile:", err);
+      console.error("[AuthContext] Error fetching profile:", err);
       setProfile(null);
     }
   }, []);

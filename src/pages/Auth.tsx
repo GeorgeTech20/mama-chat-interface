@@ -30,7 +30,9 @@ const Auth = () => {
     if (loading) return;
     
     if (user) {
-      if (profile && profile.name && profile.dni) {
+      // Profile is complete if it has name AND (dni OR patient_main linked)
+      const isProfileComplete = profile && profile.name && (profile.dni || profile.patient_main);
+      if (isProfileComplete) {
         navigate('/', { replace: true });
       } else {
         navigate('/register', { replace: true });
