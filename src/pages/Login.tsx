@@ -91,6 +91,9 @@ const Login = () => {
           <h1 className="text-3xl font-semibold text-primary-foreground tracking-tight">
             Vida
           </h1>
+          <p className="text-lg font-serif text-primary-foreground/90 mt-2 italic">
+            Tu salud acompañada
+          </p>
         </div>
 
         {/* Bottom Login Section - Transparent card */}
