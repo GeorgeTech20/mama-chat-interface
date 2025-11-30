@@ -35,8 +35,10 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     return <Navigate to="/login" replace />;
   }
 
-  // If user is authenticated but profile is incomplete (no name or no dni), redirect to register
-  if (!profile || !profile.name || !profile.dni) {
+  // If user is authenticated but profile is incomplete, redirect to register
+  // Profile is complete if it has name AND (dni OR patient_main linked)
+  const isProfileComplete = profile && profile.name && (profile.dni || profile.patient_main);
+  if (!isProfileComplete) {
     return <Navigate to="/register" replace />;
   }
 
