@@ -14,43 +14,75 @@ export type Database = {
   }
   public: {
     Tables: {
-      medical_files: {
+      appointments: {
         Row: {
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          conversation_id: number | null
           created_at: string
-          description: string | null
-          file_name: string
-          file_path: string
-          file_size: number
-          file_type: string
-          id: string
-          patient_id: string | null
-          user_id: string | null
+          deleted_at: string | null
+          doctor_id: number | null
+          duration_minutes: number | null
+          id: number
+          notes: string | null
+          patient_id: number
+          reason: string | null
+          scheduled_at: string
+          status: string
+          updated_at: string | null
+          version: number | null
         }
         Insert: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          conversation_id?: number | null
           created_at?: string
-          description?: string | null
-          file_name: string
-          file_path: string
-          file_size: number
-          file_type: string
-          id?: string
-          patient_id?: string | null
-          user_id?: string | null
+          deleted_at?: string | null
+          doctor_id?: number | null
+          duration_minutes?: number | null
+          id?: number
+          notes?: string | null
+          patient_id: number
+          reason?: string | null
+          scheduled_at: string
+          status?: string
+          updated_at?: string | null
+          version?: number | null
         }
         Update: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          conversation_id?: number | null
           created_at?: string
-          description?: string | null
-          file_name?: string
-          file_path?: string
-          file_size?: number
-          file_type?: string
-          id?: string
-          patient_id?: string | null
-          user_id?: string | null
+          deleted_at?: string | null
+          doctor_id?: number | null
+          duration_minutes?: number | null
+          id?: number
+          notes?: string | null
+          patient_id?: number
+          reason?: string | null
+          scheduled_at?: string
+          status?: string
+          updated_at?: string | null
+          version?: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "medical_files_patient_id_fkey"
+            foreignKeyName: "fk_appointment_conversation"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_appointment_doctor"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_appointment_patient"
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
@@ -58,137 +90,406 @@ export type Database = {
           },
         ]
       }
-      patients: {
+      assessments: {
         Row: {
-          birth_date: string
+          context: string | null
+          conversation_id: number
           created_at: string
-          dni: string
-          email: string | null
-          first_name: string
-          gender: string | null
-          height: number | null
-          id: string
-          last_name: string
-          phone: string | null
-          updated_at: string
-          user_creator: string | null
-          user_owner: string | null
-          weight: number | null
+          deleted_at: string | null
+          duration: string | null
+          id: number
+          intensity: string | null
+          onset: string | null
+          possible_causes: string | null
+          recommendations: string | null
+          recurrence: string | null
+          red_flags: string | null
+          severity_level: string
+          symptom_description: string | null
+          triggers: string | null
+          updated_at: string | null
+          version: number | null
         }
         Insert: {
-          birth_date: string
+          context?: string | null
+          conversation_id: number
           created_at?: string
-          dni: string
-          email?: string | null
-          first_name: string
-          gender?: string | null
-          height?: number | null
-          id?: string
-          last_name: string
-          phone?: string | null
-          updated_at?: string
-          user_creator?: string | null
-          user_owner?: string | null
-          weight?: number | null
+          deleted_at?: string | null
+          duration?: string | null
+          id?: number
+          intensity?: string | null
+          onset?: string | null
+          possible_causes?: string | null
+          recommendations?: string | null
+          recurrence?: string | null
+          red_flags?: string | null
+          severity_level: string
+          symptom_description?: string | null
+          triggers?: string | null
+          updated_at?: string | null
+          version?: number | null
         }
         Update: {
-          birth_date?: string
+          context?: string | null
+          conversation_id?: number
           created_at?: string
-          dni?: string
-          email?: string | null
-          first_name?: string
-          gender?: string | null
-          height?: number | null
-          id?: string
-          last_name?: string
-          phone?: string | null
-          updated_at?: string
-          user_creator?: string | null
-          user_owner?: string | null
-          weight?: number | null
+          deleted_at?: string | null
+          duration?: string | null
+          id?: number
+          intensity?: string | null
+          onset?: string | null
+          possible_causes?: string | null
+          recommendations?: string | null
+          recurrence?: string | null
+          red_flags?: string | null
+          severity_level?: string
+          symptom_description?: string | null
+          triggers?: string | null
+          updated_at?: string | null
+          version?: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "fk_user_creator"
-            columns: ["user_creator"]
+            foreignKeyName: "fk_assessment_conversation"
+            columns: ["conversation_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "fk_user_owner"
-            columns: ["user_owner"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
           },
         ]
       }
-      profiles: {
+      conversations: {
         Row: {
-          birth_date: string
           created_at: string
-          dni: string
-          gender: string
-          height: number
-          id: string
-          name: string
-          patient_active: string | null
-          patient_main: string | null
-          phone: string | null
-          surname: string
-          updated_at: string
-          user_id: string | null
-          weight: number
+          created_by: number | null
+          deleted_at: string | null
+          external_conversation_id: string | null
+          id: number
+          initial_symptom: string | null
+          monitoring_instructions: string | null
+          patient_id: number
+          questions_for_doctor: string | null
+          recommendations: string | null
+          severity_level: string | null
+          status: string
+          summary: string | null
+          updated_at: string | null
+          version: number | null
         }
         Insert: {
-          birth_date: string
           created_at?: string
-          dni: string
-          gender: string
-          height: number
-          id?: string
-          name: string
-          patient_active?: string | null
-          patient_main?: string | null
-          phone?: string | null
-          surname: string
-          updated_at?: string
-          user_id?: string | null
-          weight: number
+          created_by?: number | null
+          deleted_at?: string | null
+          external_conversation_id?: string | null
+          id?: number
+          initial_symptom?: string | null
+          monitoring_instructions?: string | null
+          patient_id: number
+          questions_for_doctor?: string | null
+          recommendations?: string | null
+          severity_level?: string | null
+          status?: string
+          summary?: string | null
+          updated_at?: string | null
+          version?: number | null
         }
         Update: {
-          birth_date?: string
           created_at?: string
-          dni?: string
-          gender?: string
-          height?: number
-          id?: string
-          name?: string
-          patient_active?: string | null
-          patient_main?: string | null
-          phone?: string | null
-          surname?: string
-          updated_at?: string
-          user_id?: string | null
-          weight?: number
+          created_by?: number | null
+          deleted_at?: string | null
+          external_conversation_id?: string | null
+          id?: number
+          initial_symptom?: string | null
+          monitoring_instructions?: string | null
+          patient_id?: number
+          questions_for_doctor?: string | null
+          recommendations?: string | null
+          severity_level?: string | null
+          status?: string
+          summary?: string | null
+          updated_at?: string | null
+          version?: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "fk_patient_active"
-            columns: ["patient_active"]
+            foreignKeyName: "fk_conversation_created_by"
+            columns: ["created_by"]
             isOneToOne: false
-            referencedRelation: "patients"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_patient_main"
-            columns: ["patient_main"]
+            foreignKeyName: "fk_conversation_patient"
+            columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]
+      }
+      flyway_schema_history: {
+        Row: {
+          checksum: number | null
+          description: string
+          execution_time: number
+          installed_by: string
+          installed_on: string
+          installed_rank: number
+          script: string
+          success: boolean
+          type: string
+          version: string | null
+        }
+        Insert: {
+          checksum?: number | null
+          description: string
+          execution_time: number
+          installed_by: string
+          installed_on?: string
+          installed_rank: number
+          script: string
+          success: boolean
+          type: string
+          version?: string | null
+        }
+        Update: {
+          checksum?: number | null
+          description?: string
+          execution_time?: number
+          installed_by?: string
+          installed_on?: string
+          installed_rank?: number
+          script?: string
+          success?: boolean
+          type?: string
+          version?: string | null
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          content: string
+          conversation_id: number
+          created_at: string
+          deleted_at: string | null
+          id: number
+          response_time_ms: number | null
+          tokens_used: number | null
+          type: string
+          updated_at: string | null
+          version: number | null
+        }
+        Insert: {
+          content: string
+          conversation_id: number
+          created_at?: string
+          deleted_at?: string | null
+          id?: number
+          response_time_ms?: number | null
+          tokens_used?: number | null
+          type: string
+          updated_at?: string | null
+          version?: number | null
+        }
+        Update: {
+          content?: string
+          conversation_id?: number
+          created_at?: string
+          deleted_at?: string | null
+          id?: number
+          response_time_ms?: number | null
+          tokens_used?: number | null
+          type?: string
+          updated_at?: string | null
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_message_conversation"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patients: {
+        Row: {
+          address: string | null
+          allergies: string | null
+          city: string | null
+          country: string | null
+          created_at: string
+          current_medications: string | null
+          date_of_birth: string | null
+          deleted_at: string | null
+          document_number: string | null
+          document_type: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          gender: string | null
+          id: number
+          medical_history: string | null
+          postal_code: string | null
+          state: string | null
+          updated_at: string | null
+          user_id: number
+          version: number | null
+        }
+        Insert: {
+          address?: string | null
+          allergies?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          current_medications?: string | null
+          date_of_birth?: string | null
+          deleted_at?: string | null
+          document_number?: string | null
+          document_type?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          gender?: string | null
+          id?: number
+          medical_history?: string | null
+          postal_code?: string | null
+          state?: string | null
+          updated_at?: string | null
+          user_id: number
+          version?: number | null
+        }
+        Update: {
+          address?: string | null
+          allergies?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          current_medications?: string | null
+          date_of_birth?: string | null
+          deleted_at?: string | null
+          document_number?: string | null
+          document_type?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          gender?: string | null
+          id?: number
+          medical_history?: string | null
+          postal_code?: string | null
+          state?: string | null
+          updated_at?: string | null
+          user_id?: number
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_patient_user"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      symptoms: {
+        Row: {
+          assessment_id: number
+          created_at: string
+          deleted_at: string | null
+          description: string | null
+          duration: string | null
+          id: number
+          intensity: string | null
+          is_primary: boolean | null
+          location: string | null
+          name: string
+          updated_at: string | null
+          version: number | null
+        }
+        Insert: {
+          assessment_id: number
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          duration?: string | null
+          id?: number
+          intensity?: string | null
+          is_primary?: boolean | null
+          location?: string | null
+          name: string
+          updated_at?: string | null
+          version?: number | null
+        }
+        Update: {
+          assessment_id?: number
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          duration?: string | null
+          id?: number
+          intensity?: string | null
+          is_primary?: boolean | null
+          location?: string | null
+          name?: string
+          updated_at?: string | null
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_symptom_assessment"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          email: string
+          first_name: string
+          id: number
+          is_active: boolean
+          last_login_at: string | null
+          last_name: string
+          password_hash: string
+          phone: string | null
+          role: string
+          updated_at: string | null
+          version: number | null
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          email: string
+          first_name: string
+          id?: number
+          is_active?: boolean
+          last_login_at?: string | null
+          last_name: string
+          password_hash: string
+          phone?: string | null
+          role: string
+          updated_at?: string | null
+          version?: number | null
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          email?: string
+          first_name?: string
+          id?: number
+          is_active?: boolean
+          last_login_at?: string | null
+          last_name?: string
+          password_hash?: string
+          phone?: string | null
+          role?: string
+          updated_at?: string | null
+          version?: number | null
+        }
+        Relationships: []
       }
     }
     Views: {
