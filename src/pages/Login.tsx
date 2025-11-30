@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import MobileLayout from '@/components/MobileLayout';
 import { Button } from '@/components/ui/button';
 import { Heart } from 'lucide-react';
+import loginBackground from '@/assets/login-background.png';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -94,12 +95,13 @@ const Login = () => {
   return (
     <MobileLayout showNav={false}>
       <div className="min-h-screen flex flex-col relative">
-        {/* Background - Full screen primary color */}
-        <div className="absolute inset-0 bg-primary">
-          {/* Decorative elements */}
-          <div className="absolute top-20 left-10 w-20 h-20 rounded-full bg-primary-foreground/5" />
-          <div className="absolute top-40 right-8 w-32 h-32 rounded-full bg-primary-foreground/5" />
-          <div className="absolute bottom-1/3 left-4 w-16 h-16 rounded-full bg-primary-foreground/5" />
+        {/* Background - Full screen image */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${loginBackground})` }}
+        >
+          {/* Overlay for better text readability */}
+          <div className="absolute inset-0 bg-black/30" />
         </div>
 
         {/* Skip button removed - now using protected routes */}
