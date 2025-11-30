@@ -110,7 +110,7 @@ const Login = () => {
             <Heart className="w-12 h-12 text-primary-foreground" strokeWidth={1.5} />
           </div>
           <h1 className="text-3xl font-semibold text-primary-foreground tracking-tight">
-            Medical Solutions
+            Vida
           </h1>
         </div>
 
