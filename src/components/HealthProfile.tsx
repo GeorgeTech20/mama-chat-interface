@@ -88,12 +88,7 @@ const HealthProfile = () => {
       {bmi && (
         <div className="bg-background rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="relative">
-              <Heart className="w-10 h-10 text-destructive fill-destructive animate-pulse" />
-              <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-primary-foreground">
-                {bmi}
-              </span>
-            </div>
+            <Heart className="w-10 h-10 text-destructive fill-destructive animate-pulse" />
             <div>
               <p className="text-sm text-muted-foreground">Tu IMC</p>
               <p className={cn("font-semibold", bmiStatus?.color)}>{bmiStatus?.text}</p>
