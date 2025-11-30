@@ -1,0 +1,914 @@
+---
+alwaysApply: true
+description: Reglas y estándares para pruebas unitarias con Vitest en el proyecto Vida App (React + Vite + Supabase)
+globs: *.test.ts,*.test.tsx,*.spec.ts,*.spec.tsx
+---
+
+# Estándares de Testing con Vitest - Vida App
+
+Este documento define las reglas, convenciones y mejores prácticas para escribir pruebas unitarias en el proyecto Vida App usando Vitest y React Testing Library.
+
+## 📋 Índice
+
+1. [Configuración y Estructura](#configuración-y-estructura)
+2. [Nomenclatura y Organización](#nomenclatura-y-organización)
+3. [Escribiendo Tests](#escribiendo-tests)
+4. [Componentes UI](#componentes-ui)
+5. [Utilidades y Helpers](#utilidades-y-helpers)
+6. [Integración con Supabase](#integración-con-supabase)
+7. [Hooks Personalizados](#hooks-personalizados)
+8. [Mocking y Stubbing](#mocking-y-stubbing)
+9. [Cobertura y Métricas](#cobertura-y-métricas)
+10. [Mejores Prácticas](#mejores-prácticas)
+
+---
+
+## Configuración y Estructura
+
+### Ubicación de Tests
+
+- ✅ **Co-location**: Coloca tests junto al código (mismo directorio)
+- ✅ **Convención**: `*.test.ts`, `*.test.tsx` o en carpeta `__tests__/`
+- ❌ **Evita**: Directorios separados como `tests/` en la raíz
+
+### Estructura Recomendada
+
+```
+src/
+├── components/
+│   ├── ui/
+│   │   ├── button.tsx
+│   │   └── button.test.tsx
+│   ├── PatientSelector.tsx
+│   └── PatientSelector.test.tsx
+├── hooks/
+│   ├── useActivePatient.ts
+│   └── useActivePatient.test.ts
+├── lib/
+│   ├── utils.ts
+│   └── utils.test.ts
+└── test/
+    └── setup.ts
+```
+
+---
+
+## Nomenclatura y Organización
+
+### Nombre de Archivos
+
+```typescript
+// ✅ CORRECTO
+button.test.tsx
+utils.test.ts
+PatientSelector.test.tsx
+useActivePatient.test.ts
+
+// ❌ INCORRECTO
+button.test.spec.tsx
+utils.spec.ts
+```
+
+### Estructura de Tests
+
+```typescript
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+
+describe('ComponentName', () => {
+  // Tests relacionados agrupados
+  describe('cuando se renderiza', () => {
+    it('debe mostrar el contenido correcto', () => {
+      // ...
+    })
+  })
+
+  describe('cuando el usuario interactúa', () => {
+    it('debe manejar el click correctamente', () => {
+      // ...
+    })
+  })
+})
+```
+
+### Convenciones de Nombres
+
+- Usa **español** para descripciones (debe/must + acción)
+- Describe el **comportamiento esperado**, no la implementación
+- ✅ `describe('cuando el usuario hace click', ...)` 
+- ❌ `describe('handleClick', ...)`
+
+---
+
+## Escribiendo Tests
+
+### AAA Pattern (Arrange-Act-Assert)
+
+```typescript
+it('debe calcular el total correctamente', () => {
+  // Arrange - Preparar
+  const items = [
+    { price: 100, quantity: 2 },
+    { price: 50, quantity: 1 }
+  ]
+
+  // Act - Ejecutar
+  const total = calculateTotal(items)
+
+  // Assert - Verificar
+  expect(total).toBe(250)
+})
+```
+
+### Test Cases por Componente
+
+Siempre prueba:
+
+1. **Renderizado correcto** con props default
+2. **Variantes diferentes** (variant, size, etc.)
+3. **Interacciones del usuario** (click, hover, etc.)
+4. **Estados condicionales** (loading, error, disabled)
+5. **Props opcionales** (className, asChild, etc.)
+
+---
+
+## Componentes UI
+
+### Testing shadcn/ui Components
+
+#### Ejemplo: Button Component
+
+```typescript
+import { describe, it, expect } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { Button } from '@/components/ui/button'
+
+describe('Button', () => {
+  it('debe renderizar con texto', () => {
+    render(<Button>Click me</Button>)
+    expect(screen.getByRole('button', { name: /click me/i })).toBeInTheDocument()
+  })
+
+  it('debe aplicar variantes correctamente', () => {
+    const { container, rerender } = render(<Button variant="default">Test</Button>)
+    expect(container.firstChild).toHaveClass('bg-primary')
+
+    rerender(<Button variant="outline">Test</Button>)
+    expect(container.firstChild).toHaveClass('border')
+  })
+
+  it('debe manejar clicks correctamente', async () => {
+    const handleClick = vi.fn()
+    render(<Button onClick={handleClick}>Click me</Button>)
+    
+    await userEvent.click(screen.getByRole('button'))
+    
+    expect(handleClick).toHaveBeenCalledTimes(1)
+  })
+
+  it('debe estar deshabilitado cuando disabled=true', () => {
+    render(<Button disabled>Disabled</Button>)
+    expect(screen.getByRole('button')).toBeDisabled()
+  })
+
+  it('debe aplicar className personalizado', () => {
+    const { container } = render(<Button className="custom-class">Test</Button>)
+    expect(container.firstChild).toHaveClass('custom-class')
+  })
+})
+```
+
+#### Ejemplo: Card Component (Compound Components)
+
+```typescript
+import { describe, it, expect } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { 
+  Card, 
+  CardHeader, 
+  CardTitle, 
+  CardContent 
+} from '@/components/ui/card'
+
+describe('Card', () => {
+  it('debe renderizar como componente compuesto', () => {
+    render(
+      <Card>
+        <CardHeader>
+          <CardTitle>Título</CardTitle>
+        </CardHeader>
+        <CardContent>Contenido</CardContent>
+      </Card>
+    )
+
+    expect(screen.getByText('Título')).toBeInTheDocument()
+    expect(screen.getByText('Contenido')).toBeInTheDocument()
+  })
+})
+```
+
+### Componentes Personalizados
+
+#### Ejemplo: PatientSelector Component
+
+```typescript
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { PatientSelector } from '@/components/PatientSelector'
+
+// Mock de módulos externos
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({
+    user: { id: 'user-1' },
+    profile: { patient_active: 'patient-1' },
+    refreshProfile: vi.fn(),
+  }),
+}))
+
+vi.mock('@/integrations/supabase/client', () => ({
+  supabase: {
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          data: [
+            { id: 'patient-1', first_name: 'Juan', last_name: 'Pérez' }
+          ],
+          error: null,
+        })),
+      })),
+    })),
+  },
+}))
+
+vi.mock('sonner', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}))
+
+describe('PatientSelector', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('debe renderizar lista de pacientes', async () => {
+    render(<PatientSelector />)
+    
+    await waitFor(() => {
+      expect(screen.getByText(/juan pérez/i)).toBeInTheDocument()
+    })
+  })
+
+  it('debe permitir seleccionar un paciente', async () => {
+    render(<PatientSelector />)
+    
+    await waitFor(() => {
+      expect(screen.getByText(/juan pérez/i)).toBeInTheDocument()
+    })
+
+    const patientButton = screen.getByText(/juan pérez/i)
+    await userEvent.click(patientButton)
+
+    // Verificar que se actualizó la selección
+    // (depende de tu implementación)
+  })
+})
+```
+
+---
+
+## Utilidades y Helpers
+
+### Testing Utility Functions
+
+```typescript
+import { describe, it, expect } from 'vitest'
+import { cn } from '@/lib/utils'
+
+describe('cn utility', () => {
+  it('debe combinar clases correctamente', () => {
+    expect(cn('foo', 'bar')).toBe('foo bar')
+  })
+
+  it('debe manejar clases condicionales', () => {
+    expect(cn('base', false && 'hidden', 'active')).toBe('base active')
+  })
+
+  it('debe resolver conflictos de Tailwind', () => {
+    const result = cn('p-4 p-6')
+    expect(result).toBe('p-6') // p-6 debería sobrescribir p-4
+  })
+})
+```
+
+### Testing Form Helpers
+
+```typescript
+import { describe, it, expect } from 'vitest'
+import { validateEmail, validatePassword } from '@/lib/validation'
+
+describe('Validation Helpers', () => {
+  describe('validateEmail', () => {
+    it('debe validar emails correctos', () => {
+      expect(validateEmail('test@example.com')).toBe(true)
+      expect(validateEmail('user.name@domain.co.uk')).toBe(true)
+    })
+
+    it('debe rechazar emails inválidos', () => {
+      expect(validateEmail('invalid')).toBe(false)
+      expect(validateEmail('@example.com')).toBe(false)
+      expect(validateEmail('test@')).toBe(false)
+    })
+  })
+
+  describe('validatePassword', () => {
+    it('debe validar contraseñas con mínimo 6 caracteres', () => {
+      expect(validatePassword('password123')).toBe(true)
+      expect(validatePassword('123456')).toBe(true)
+    })
+
+    it('debe rechazar contraseñas muy cortas', () => {
+      expect(validatePassword('12345')).toBe(false)
+      expect(validatePassword('')).toBe(false)
+    })
+  })
+})
+```
+
+---
+
+## Integración con Supabase
+
+### Mocking Supabase
+
+```typescript
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { createClient } from '@supabase/supabase-js'
+
+// Mock de Supabase
+vi.mock('@/integrations/supabase/client', () => {
+  const mockSupabase = {
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          single: vi.fn(() => ({
+            data: { id: '1', name: 'Test' },
+            error: null,
+          })),
+        })),
+        data: [{ id: '1', name: 'Test' }],
+        error: null,
+      })),
+      insert: vi.fn(() => ({
+        data: { id: '1' },
+        error: null,
+      })),
+      update: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          data: { id: '1' },
+          error: null,
+        })),
+      })),
+      delete: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          data: null,
+          error: null,
+        })),
+      })),
+    })),
+    auth: {
+      getSession: vi.fn(() => ({
+        data: { session: { user: { id: 'user-1' } } },
+        error: null,
+      })),
+      signOut: vi.fn(() => ({ error: null })),
+    },
+    channel: vi.fn(() => ({
+      on: vi.fn(() => ({
+        subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
+      })),
+    })),
+  }
+
+  return {
+    supabase: mockSupabase,
+  }
+})
+
+describe('Supabase Integration', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('debe obtener datos de una tabla', async () => {
+    const { supabase } = await import('@/integrations/supabase/client')
+    
+    const { data, error } = await supabase
+      .from('patients')
+      .select('*')
+      .eq('id', '1')
+      .single()
+
+    expect(error).toBeNull()
+    expect(data).toEqual({ id: '1', name: 'Test' })
+  })
+})
+```
+
+### Testing Supabase Queries con React Query
+
+```typescript
+import { describe, it, expect, vi } from 'vitest'
+import { renderHook, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '@/integrations/supabase/client'
+
+// Mock de Supabase
+vi.mock('@/integrations/supabase/client', () => ({
+  supabase: {
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          data: [{ id: '1', name: 'Patient 1' }],
+          error: null,
+        })),
+      })),
+    })),
+  },
+}))
+
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+    },
+  })
+  return ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
+}
+
+describe('usePatientsQuery', () => {
+  it('debe obtener pacientes correctamente', async () => {
+    const fetchPatients = async (userId: string) => {
+      const { data, error } = await supabase
+        .from('patients')
+        .select('*')
+        .eq('user_id', userId)
+
+      if (error) throw error
+      return data
+    }
+
+    const { result } = renderHook(
+      () => useQuery({
+        queryKey: ['patients', 'user-1'],
+        queryFn: () => fetchPatients('user-1'),
+      }),
+      { wrapper: createWrapper() }
+    )
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(result.current.data).toEqual([{ id: '1', name: 'Patient 1' }])
+  })
+})
+```
+
+---
+
+## Hooks Personalizados
+
+### Testing Custom Hooks
+
+```typescript
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { renderHook, waitFor } from '@testing-library/react'
+import { useActivePatient } from '@/hooks/useActivePatient'
+
+// Mock de dependencias
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({
+    user: { id: 'user-1' },
+    profile: { patient_active: 'patient-1' },
+  }),
+}))
+
+vi.mock('@/integrations/supabase/client', () => ({
+  supabase: {
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          single: vi.fn(() => ({
+            data: {
+              id: 'patient-1',
+              first_name: 'Juan',
+              last_name: 'Pérez',
+            },
+            error: null,
+          })),
+        })),
+      })),
+    })),
+  },
+}))
+
+describe('useActivePatient', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('debe retornar el paciente activo', async () => {
+    const { result } = renderHook(() => useActivePatient())
+
+    expect(result.current.loading).toBe(true)
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+
+    expect(result.current.activePatient).toEqual({
+      id: 'patient-1',
+      first_name: 'Juan',
+      last_name: 'Pérez',
+    })
+  })
+
+  it('debe retornar null si no hay paciente activo', async () => {
+    vi.mocked(require('@/contexts/AuthContext').useAuth).mockReturnValue({
+      user: { id: 'user-1' },
+      profile: { patient_active: null },
+    })
+
+    const { result } = renderHook(() => useActivePatient())
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+
+    expect(result.current.activePatient).toBeNull()
+  })
+})
+```
+
+---
+
+## Mocking y Stubbing
+
+### Mocking Modules
+
+```typescript
+import { vi } from 'vitest'
+
+// Mock completo
+vi.mock('@/lib/api', () => ({
+  fetchData: vi.fn().mockResolvedValue({ data: 'test' }),
+  postData: vi.fn(),
+}))
+
+// Mock parcial
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom')
+  return {
+    ...actual,
+    useNavigate: () => vi.fn(),
+    useParams: () => ({ id: '1' }),
+  }
+})
+```
+
+### Mocking Functions
+
+```typescript
+import { describe, it, expect, vi } from 'vitest'
+
+describe('with mocks', () => {
+  it('debe mockear funciones', () => {
+    const mockFn = vi.fn()
+    mockFn('test')
+    
+    expect(mockFn).toHaveBeenCalled()
+    expect(mockFn).toHaveBeenCalledWith('test')
+  })
+
+  it('debe mockear valores de retorno', () => {
+    const mockFn = vi.fn(() => 'mocked value')
+    expect(mockFn()).toBe('mocked value')
+  })
+
+  it('debe mockear promesas', async () => {
+    const mockAsyncFn = vi.fn().mockResolvedValue({ data: 'success' })
+    const result = await mockAsyncFn()
+    expect(result).toEqual({ data: 'success' })
+  })
+})
+```
+
+### Mocking React Router
+
+```typescript
+import { vi } from 'vitest'
+
+vi.mock('react-router-dom', () => ({
+  useNavigate: () => vi.fn(),
+  useParams: () => ({ id: '1' }),
+  useLocation: () => ({ pathname: '/chat' }),
+  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
+    <a href={to}>{children}</a>
+  ),
+}))
+```
+
+---
+
+## Cobertura y Métricas
+
+### Scripts de Cobertura
+
+```bash
+# Ejecutar tests con cobertura
+npm run test:coverage
+
+# Objetivo: > 80% de cobertura
+# - Statements: > 80%
+# - Branches: > 70%
+# - Functions: > 80%
+# - Lines: > 80%
+```
+
+### Configuración de Vitest para Cobertura
+
+```typescript
+// vitest.config.ts
+import { defineConfig } from 'vitest/config'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: [
+        '**/node_modules/**',
+        '**/dist/**',
+        '**/src/test/**',
+        '**/*.config.*',
+        '**/types.ts',
+        '**/types/**',
+        '**/main.tsx',
+        '**/vite-env.d.ts',
+      ],
+      thresholds: {
+        statements: 80,
+        branches: 70,
+        functions: 80,
+        lines: 80,
+      },
+    },
+  },
+})
+```
+
+---
+
+## Mejores Prácticas
+
+### ✅ DO (Hacer)
+
+1. **Usa queries accesibles** (`getByRole`, `getByLabelText`)
+2. **Testea el comportamiento, no la implementación**
+3. **Usa `waitFor` para operaciones asíncronas**
+4. **Mockea dependencias externas** (Supabase, APIs)
+5. **Escribe tests descriptivos en español**
+6. **Agrupa tests relacionados con `describe`**
+7. **Usa `cleanup` para limpiar entre tests**
+8. **Testea casos edge y errores**
+9. **Usa `userEvent` en lugar de `fireEvent` para interacciones**
+10. **Mockea Context API cuando sea necesario**
+
+### ❌ DON'T (No hacer)
+
+1. ❌ **No uses queries internas** (`querySelector`, `getByTestId` como primera opción)
+2. ❌ **No testees detalles de implementación** (estado interno, métodos privados)
+3. ❌ **No hagas tests que dependan de timing exacto**
+4. ❌ **No olvides hacer cleanup de mocks**
+5. ❌ **No ignores errores silenciosamente**
+6. ❌ **No uses `any` en TypeScript en tests**
+7. ❌ **No hagas múltiples assertions en un solo test** (a menos que estén relacionados)
+8. ❌ **No mockees todo** - solo lo necesario
+9. ❌ **No hagas tests que dependan de otros tests**
+10. ❌ **No uses `console.log` en tests de producción**
+
+### Checklist Antes de Crear PR
+
+```markdown
+- [ ] Todos los tests pasan (`npm run test:run`)
+- [ ] Cobertura mínima del 80%
+- [ ] Tests significativos (no solo "should render")
+- [ ] Mocks apropiados para dependencias externas (Supabase)
+- [ ] Sin warnings o console.logs
+- [ ] Tests son rápidos (< 5s por test suite)
+- [ ] Documentación actualizada si necesario
+- [ ] Tests de accesibilidad cuando sea relevante
+```
+
+---
+
+## Recursos Adicionales
+
+- [Documentación de Vitest](https://vitest.dev/)
+- [React Testing Library](https://testing-library.com/react)
+- [Testing Library - Guía de Queries](https://testing-library.com/docs/queries/about/)
+- [Testing Library - user-event](https://testing-library.com/docs/user-event/intro)
+- [Supabase Testing Guide](https://supabase.com/docs/guides/cli/local-development)
+
+---
+
+## Ejemplo Completo: Testing de un Componente Real
+
+```typescript
+// src/components/PatientSelector.test.tsx
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { PatientSelector } from './PatientSelector'
+
+// Mocks
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({
+    user: { id: 'user-1' },
+    profile: { patient_active: 'patient-1' },
+    refreshProfile: vi.fn(),
+  }),
+}))
+
+vi.mock('@/integrations/supabase/client', () => ({
+  supabase: {
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          data: [
+            { id: 'patient-1', first_name: 'Juan', last_name: 'Pérez' },
+            { id: 'patient-2', first_name: 'María', last_name: 'García' },
+          ],
+          error: null,
+        })),
+      })),
+    })),
+  },
+}))
+
+vi.mock('sonner', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}))
+
+describe('PatientSelector', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  describe('Renderizado', () => {
+    it('debe renderizar lista de pacientes', async () => {
+      render(<PatientSelector />)
+      
+      await waitFor(() => {
+        expect(screen.getByText(/juan pérez/i)).toBeInTheDocument()
+        expect(screen.getByText(/maría garcía/i)).toBeInTheDocument()
+      })
+    })
+
+    it('debe mostrar estado de carga inicialmente', () => {
+      render(<PatientSelector />)
+      // Verificar indicador de carga si existe
+    })
+  })
+
+  describe('Interacción', () => {
+    it('debe permitir seleccionar un paciente', async () => {
+      render(<PatientSelector />)
+      
+      await waitFor(() => {
+        expect(screen.getByText(/juan pérez/i)).toBeInTheDocument()
+      })
+
+      const patientButton = screen.getByText(/juan pérez/i)
+      await userEvent.click(patientButton)
+
+      // Verificar que se actualizó la selección
+      // (depende de tu implementación)
+    })
+
+    it('debe abrir el selector al hacer click', async () => {
+      render(<PatientSelector />)
+      
+      const trigger = screen.getByRole('button')
+      await userEvent.click(trigger)
+
+      await waitFor(() => {
+        expect(screen.getByText(/juan pérez/i)).toBeInTheDocument()
+      })
+    })
+  })
+
+  describe('Estados', () => {
+    it('debe manejar errores de carga', async () => {
+      // Mock error
+      vi.mocked(require('@/integrations/supabase/client').supabase.from)
+        .mockReturnValueOnce({
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              data: null,
+              error: { message: 'Error de conexión' },
+            })),
+          })),
+        } as any)
+
+      render(<PatientSelector />)
+
+      await waitFor(() => {
+        expect(require('sonner').toast.error).toHaveBeenCalled()
+      })
+    })
+  })
+})
+```
+
+---
+
+## Comandos Útiles
+
+```bash
+# Ejecutar tests en modo watch
+npm run test
+
+# Ejecutar tests una vez (CI/CD)
+npm run test:run
+
+# Tests con UI visual
+npm run test:ui
+
+# Cobertura de código
+npm run test:coverage
+
+# Tests de un archivo específico
+npm run test -- PatientSelector.test.tsx
+
+# Tests con filtro de nombre
+npm run test -- -t "PatientSelector"
+
+# Tests en modo debug
+npm run test -- --inspect-brk
+```
+
+---
+
+## Setup de Vitest
+
+### Configuración básica (vitest.config.ts)
+
+```typescript
+import { defineConfig } from 'vitest/config'
+import react from '@vitejs/plugin-react'
+import path from 'path'
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    globals: true,
+    css: true,
+  },
+})
+```
+
+### Setup file (src/test/setup.ts)
+
+```typescript
+import { expect, afterEach } from 'vitest'
+import { cleanup } from '@testing-library/react'
+import * as matchers from '@testing-library/jest-dom/matchers'
+
+// Extiende expect con matchers de jest-dom
+expect.extend(matchers)
+
+// Limpia después de cada test
+afterEach(() => {
+  cleanup()
+})
+```

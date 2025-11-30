@@ -1,0 +1,769 @@
+---
+alwaysApply: true
+description: Reglas de desarrollo para React + Vite + Supabase, adaptadas de mejores prácticas de Next.js y la comunidad React
+globs: *.js,*.jsx,*.ts,*.tsx
+---
+
+# Reglas de Desarrollo - React + Vite + Supabase
+
+Este documento adapta las mejores prácticas de Next.js y la comunidad React a nuestro stack: **React 18 + Vite + Supabase + React Router + Tailwind CSS**.
+
+## 1. Organización de Código y Estructura
+
+### Estructura de Directorios
+
+**⚠️ IMPORTANTE - Migración a Atomic Design:**
+
+- **Código nuevo**: Debe seguir la estructura de Atomic Design (ver sección 1.1)
+- **Código existente**: Se mantiene en su ubicación actual y se migrará progresivamente
+- **No romper**: No mover componentes existentes hasta que se planifique su migración
+
+#### Estructura Actual (Legacy - Migración Progresiva)
+
+```
+src/
+├── components/        # Componentes existentes (se migrarán progresivamente)
+│   └── ui/           # Componentes UI de shadcn (NO MODIFICAR directamente)
+├── pages/            # Páginas/rutas de la aplicación
+├── contexts/          # Context providers (estado global)
+├── hooks/            # Custom React hooks
+├── integrations/     # Integraciones externas (Supabase)
+│   └── supabase/    # Cliente y tipos de Supabase
+├── lib/              # Utilidades y helpers
+├── types/            # Tipos TypeScript compartidos
+├── data/             # Datos mock y fixtures
+└── assets/           # Imágenes, fuentes, etc.
+```
+
+#### Estructura Nueva (Atomic Design - Para Código Nuevo)
+
+```
+src/
+├── components/
+│   ├── atoms/        # ✅ NUEVO: Componentes básicos e indivisibles
+│   │   └── ui/      # Componentes UI de shadcn (NO MODIFICAR)
+│   ├── molecules/    # ✅ NUEVO: Combinaciones simples de atoms
+│   ├── organisms/    # ✅ NUEVO: Componentes complejos con lógica
+│   └── templates/    # ✅ NUEVO: Layouts y estructuras de página
+├── tokens/           # ✅ NUEVO: Design tokens (colores, spacing, etc.)
+│   ├── colors.ts
+│   ├── spacing.ts
+│   ├── typography.ts
+│   └── shadows.ts
+├── pages/            # Páginas/rutas de la aplicación
+├── contexts/         # Context providers (estado global)
+├── hooks/            # Custom React hooks
+├── integrations/     # Integraciones externas (Supabase)
+│   └── supabase/    # Cliente y tipos de Supabase
+├── lib/              # Utilidades y helpers
+├── types/            # Tipos TypeScript compartidos
+├── data/             # Datos mock y fixtures
+└── assets/           # Imágenes, fuentes, etc.
+```
+
+### Convenciones de Nombres de Archivos
+
+- **Componentes**: `ComponentName.tsx` (PascalCase)
+- **Páginas**: `PageName.tsx` (PascalCase)
+- **Hooks**: `useHookName.ts` (camelCase, empieza con `use`)
+- **Utilidades**: `utilityName.ts` (camelCase)
+- **Tipos**: `types.ts` o `interfaces.ts` (kebab-case o descriptivo)
+- **Constantes**: `constants.ts` (kebab-case)
+
+### Organización de Módulos
+
+- **Co-locación**: Mantener componentes, estilos y tests relacionados en el mismo directorio cuando sea apropiado
+- **Atomic Design**: ✅ **Usar para todo código nuevo** - Ver sección 1.1
+- **Evitar anidación profunda**: Mantener la estructura relativamente plana para mejorar navegación
+
+## 1.1. Atomic Design - Sistema de Diseño
+
+### ⚠️ Estrategia de Migración
+
+**A partir de ahora, TODO el código nuevo debe seguir Atomic Design.**
+
+- ✅ **Código nuevo**: Crear en la estructura de Atomic Design
+- 🔄 **Código existente**: Se mantiene donde está, migración progresiva
+- 🚫 **No romper**: No mover componentes existentes sin planificación
+
+### ¿Qué es Atomic Design?
+
+Atomic Design es una metodología para construir sistemas de diseño de manera escalable y mantenible, organizando componentes en 5 niveles:
+
+1. **Atoms** (Átomos): Componentes básicos e indivisibles
+2. **Molecules** (Moléculas): Combinaciones simples de atoms
+3. **Organisms** (Organismos): Componentes complejos con lógica
+4. **Templates** (Plantillas): Layouts y estructuras de página
+5. **Pages** (Páginas): Instancias específicas de templates
+
+### Estructura de Atomic Design
+
+```
+src/components/
+├── atoms/              # Componentes básicos e indivisibles
+│   ├── ui/           # shadcn components (Button, Input, Label, etc.)
+│   ├── Icon.tsx      # Iconos reutilizables
+│   └── Avatar.tsx    # Avatar básico
+│
+├── molecules/         # Combinaciones simples de atoms
+│   ├── SearchBar.tsx # Input + Button
+│   ├── PatientCard.tsx # Card + Avatar + Text
+│   └── FormField.tsx # Label + Input + Error
+│
+├── organisms/         # Componentes complejos con lógica
+│   ├── PatientSelector.tsx # Selector con lógica de pacientes
+│   ├── HealthProfile.tsx # Perfil de salud completo
+│   └── ChatMessage.tsx # Mensaje de chat con lógica
+│
+└── templates/         # Layouts y estructuras de página
+    ├── MobileLayout.tsx # Layout para móvil
+    └── DashboardLayout.tsx # Layout de dashboard
+```
+
+### Reglas de Atomic Design
+
+#### Atoms (Átomos)
+
+- **Ubicación**: `src/components/atoms/`
+- **Características**:
+  - Componentes básicos e indivisibles
+  - No tienen lógica de negocio
+  - Altamente reutilizables
+  - Ejemplos: `Button`, `Input`, `Label`, `Icon`, `Avatar`
+
+```typescript
+// ✅ Ejemplo: Atom
+// src/components/atoms/Icon.tsx
+import { LucideIcon } from 'lucide-react';
+
+interface IconProps {
+  icon: LucideIcon;
+  size?: number;
+  className?: string;
+}
+
+export const Icon = ({ icon: IconComponent, size = 20, className }: IconProps) => {
+  return <IconComponent size={size} className={className} />;
+};
+```
+
+#### Molecules (Moléculas)
+
+- **Ubicación**: `src/components/molecules/`
+- **Características**:
+  - Combinan 2-5 atoms
+  - Pueden tener estado local simple
+  - No tienen lógica de negocio compleja
+  - Ejemplos: `SearchBar`, `PatientCard`, `FormField`
+
+```typescript
+// ✅ Ejemplo: Molecule
+// src/components/molecules/SearchBar.tsx
+import { Input } from '@/components/atoms/ui/input';
+import { Button } from '@/components/atoms/ui/button';
+import { Search } from 'lucide-react';
+
+interface SearchBarProps {
+  value: string;
+  onChange: (value: string) => void;
+  onSearch: () => void;
+}
+
+export const SearchBar = ({ value, onChange, onSearch }: SearchBarProps) => {
+  return (
+    <div className="flex gap-2">
+      <Input value={value} onChange={(e) => onChange(e.target.value)} />
+      <Button onClick={onSearch}>
+        <Search />
+      </Button>
+    </div>
+  );
+};
+```
+
+#### Organisms (Organismos)
+
+- **Ubicación**: `src/components/organisms/`
+- **Características**:
+  - Componentes complejos con lógica de negocio
+  - Pueden usar hooks personalizados
+  - Pueden hacer llamadas a APIs
+  - Ejemplos: `PatientSelector`, `HealthProfile`, `ChatMessage`
+
+```typescript
+// ✅ Ejemplo: Organism
+// src/components/organisms/PatientSelector.tsx
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { PatientCard } from '@/components/molecules/PatientCard';
+import { Button } from '@/components/atoms/ui/button';
+
+export const PatientSelector = () => {
+  const { user } = useAuth();
+  const [patients, setPatients] = useState([]);
+
+  useEffect(() => {
+    // Lógica de negocio aquí
+  }, [user]);
+
+  return (
+    <div>
+      {patients.map(patient => (
+        <PatientCard key={patient.id} patient={patient} />
+      ))}
+    </div>
+  );
+};
+```
+
+#### Templates (Plantillas)
+
+- **Ubicación**: `src/components/templates/`
+- **Características**:
+  - Layouts y estructuras de página
+  - Definen la estructura, no el contenido
+  - Pueden recibir slots para contenido
+  - Ejemplos: `MobileLayout`, `DashboardLayout`
+
+```typescript
+// ✅ Ejemplo: Template
+// src/components/templates/MobileLayout.tsx
+import { ReactNode } from 'react';
+import { BottomNav } from '@/components/organisms/BottomNav';
+
+interface MobileLayoutProps {
+  children: ReactNode;
+}
+
+export const MobileLayout = ({ children }: MobileLayoutProps) => {
+  return (
+    <div className="flex flex-col min-h-screen">
+      <main className="flex-1">{children}</main>
+      <BottomNav />
+    </div>
+  );
+};
+```
+
+### Design Tokens
+
+Los design tokens están definidos en variables CSS (`src/index.css`) y deben usarse a través de Tailwind. Ver sección completa de Design Tokens más abajo.
+
+### Migración Progresiva a Atomic Design
+
+**Plan de migración:**
+
+1. **Fase 1 (Actual)**: Código nuevo en Atomic Design, código existente se mantiene
+2. **Fase 2**: Identificar componentes candidatos para migración
+3. **Fase 3**: Migrar componentes cuando se necesiten cambios importantes
+4. **Fase 4**: Limpiar estructura legacy cuando todos los componentes estén migrados
+
+**No hacer:**
+- ❌ Mover componentes existentes sin necesidad
+- ❌ Romper imports existentes
+- ❌ Migrar todo de una vez
+
+**Hacer:**
+- ✅ Crear nuevos componentes en Atomic Design
+- ✅ Migrar cuando se necesite refactorizar
+- ✅ Actualizar imports gradualmente
+
+### Checklist para Nuevos Componentes
+
+Antes de crear un componente nuevo, pregúntate:
+
+1. **¿Es un atom?** (Button, Input, Icon, Avatar) → `components/atoms/`
+2. **¿Es una molecule?** (SearchBar, PatientCard, FormField) → `components/molecules/`
+3. **¿Es un organism?** (PatientSelector, HealthProfile, ChatMessage) → `components/organisms/`
+4. **¿Es un template?** (MobileLayout, DashboardLayout) → `components/templates/`
+
+**Regla de oro**: Si combinas 2+ componentes de un nivel inferior, pertenece al nivel superior.
+
+**Ejemplo de decisión:**
+- `Button` (solo) → Atom
+- `SearchBar` (Input + Button) → Molecule
+- `PatientSelector` (SearchBar + PatientCard + lógica) → Organism
+- `MobileLayout` (estructura de página) → Template
+
+## 2. Arquitectura de Componentes
+
+### Separación de Responsabilidades
+
+- **Componentes Presentacionales**: Solo renderizan UI, reciben props y callbacks
+- **Componentes Container**: Manejan lógica de negocio, data fetching y estado
+- **Composición sobre herencia**: Favorecer composición para crear componentes flexibles
+
+### Patrones de Diseño
+
+- **Atomic Design**: ✅ **OBLIGATORIO para código nuevo** - Ver sección 1.1
+- **Custom Hooks**: Extraer lógica reutilizable a hooks personalizados
+- **Context API**: Para estado global que no cambia frecuentemente
+- **React Query**: Para data fetching y caching del servidor
+- **Compound Components**: Combinar múltiples componentes que trabajan juntos
+
+### Ejemplo de Estructura de Componente
+
+```typescript
+// ✅ Estructura recomendada
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+interface ComponentProps {
+  title: string;
+  onAction: () => void;
+}
+
+const MyComponent = ({ title, onAction }: ComponentProps) => {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
+
+  // Lógica del componente
+  const handleClick = async () => {
+    setLoading(true);
+    try {
+      // Operación async
+      await onAction();
+      toast.success('Operación exitosa');
+    } catch (error) {
+      toast.error('Error en la operación');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div>
+      <h1>{title}</h1>
+      <Button onClick={handleClick} disabled={loading}>
+        Acción
+      </Button>
+    </div>
+  );
+};
+
+export default MyComponent;
+```
+
+## 3. Patrones Comunes y Anti-patrones
+
+### Patrones Recomendados
+
+#### Data Fetching
+
+```typescript
+// ✅ Usar React Query para data fetching
+import { useQuery, useMutation } from '@tanstack/react-query';
+
+const { data, isLoading, error } = useQuery({
+  queryKey: ['patients', userId],
+  queryFn: () => fetchPatients(userId),
+  staleTime: 5 * 60 * 1000, // 5 minutos
+});
+
+// ✅ Para mutaciones
+const mutation = useMutation({
+  mutationFn: updatePatient,
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['patients'] });
+    toast.success('Paciente actualizado');
+  },
+});
+```
+
+#### Manejo de Estado
+
+- **Estado Local**: `useState` para estado específico del componente
+- **Estado Global**: Context API para estado compartido (como `AuthContext`)
+- **Estado del Servidor**: React Query para datos de Supabase
+- **Formularios**: React Hook Form + Zod para validación
+
+#### Estilos y Design Tokens
+
+- **Tailwind CSS**: Usar clases de Tailwind, evitar estilos inline
+- **Utilidad `cn()`**: Para clases condicionales
+- **Design Tokens**: Usar tokens definidos en `src/index.css` a través de Tailwind
+
+##### Design Tokens Disponibles
+
+Los tokens están definidos como variables CSS en `src/index.css` y se acceden a través de clases de Tailwind:
+
+**Colores:**
+```typescript
+// ✅ Usar tokens de colores
+<div className="bg-primary text-primary-foreground">
+<div className="bg-secondary text-secondary-foreground">
+<div className="bg-destructive text-destructive-foreground">
+<div className="bg-muted text-muted-foreground">
+<div className="bg-accent text-accent-foreground">
+```
+
+**Sombras:**
+```typescript
+// ✅ Usar tokens de sombras
+<div className="shadow-sm">   // --shadow-sm
+<div className="shadow-md">   // --shadow-md
+<div className="shadow-lg">   // --shadow-lg
+<div className="shadow-xl">   // --shadow-xl
+<div className="shadow-2xl">  // --shadow-2xl
+```
+
+**Radios:**
+```typescript
+// ✅ Usar tokens de border radius
+<div className="rounded-sm">  // calc(var(--radius) - 4px)
+<div className="rounded-md">  // calc(var(--radius) - 2px)
+<div className="rounded-lg"> // var(--radius)
+```
+
+**Fuentes:**
+```typescript
+// ✅ Usar tokens de fuentes
+<div className="font-sans">   // --font-sans (Inter)
+<div className="font-serif"> // --font-serif (Lora)
+<div className="font-mono">  // --font-mono (Space Mono)
+```
+
+**Variables CSS disponibles:**
+- `--primary`, `--primary-foreground`
+- `--secondary`, `--secondary-foreground`
+- `--destructive`, `--destructive-foreground`
+- `--muted`, `--muted-foreground`
+- `--accent`, `--accent-foreground`
+- `--background`, `--foreground`
+- `--card`, `--card-foreground`
+- `--border`, `--input`, `--ring`
+- `--shadow-*` (sm, md, lg, xl, 2xl)
+- `--radius`
+- `--font-sans`, `--font-serif`, `--font-mono`
+
+### Anti-patrones y Code Smells
+
+❌ **NO HACER:**
+
+- **Over-fetching**: Solo obtener datos necesarios
+- **Mutación directa de estado**: Siempre usar `setState` o hooks
+- **No memoizar componentes pesados**: Usar `React.memo` cuando sea necesario
+- **`useEffect` sin dependencias correctas**: Asegurar que el array de dependencias esté completo
+- **Código de servidor en componentes cliente**: Puede exponer secretos
+- **Console.log en producción**: Eliminar antes de hacer commit
+- **Tipos `any`**: Evitar, usar tipos específicos o `unknown`
+
+✅ **HACER:**
+
+- Validar datos en cliente Y servidor (Supabase RLS)
+- Manejar errores apropiadamente
+- Limpiar suscripciones y timers en `useEffect`
+- Usar TypeScript estrictamente
+- Probar componentes localmente antes de commit
+
+## 4. Manejo de Errores
+
+### Estrategias de Error Handling
+
+```typescript
+// ✅ Manejo de errores en async operations
+try {
+  const { data, error } = await supabase
+    .from('patients')
+    .select('*')
+    .eq('id', patientId)
+    .single();
+
+  if (error) throw error;
+  
+  // Usar data
+} catch (error) {
+  const message = error instanceof Error 
+    ? error.message 
+    : 'Error desconocido';
+  toast.error(message);
+  console.error('Error fetching patient:', error);
+}
+```
+
+### Error Boundaries
+
+- Crear componentes Error Boundary para capturar errores en componentes hijos
+- Implementar fallback UI para errores
+- Logging centralizado de errores (considerar Sentry para producción)
+
+### Validación de Input
+
+- **Cliente**: Usar Zod + React Hook Form para validación inmediata
+- **Servidor**: Supabase RLS (Row Level Security) para validación del servidor
+- **Sanitización**: Supabase maneja esto automáticamente, pero ser cuidadoso con HTML renderizado
+
+## 5. Consideraciones de Performance
+
+### Optimización de Código
+
+- **Code Splitting**: Usar `React.lazy` y `Suspense` para componentes grandes
+- **Memoización**: Usar `React.memo`, `useMemo`, `useCallback` cuando sea apropiado
+- **Lazy Loading de Imágenes**: Considerar lazy loading para imágenes grandes
+- **Evitar re-renders innecesarios**: Solo actualizar estado cuando sea necesario
+
+```typescript
+// ✅ Lazy loading de componentes
+import { lazy, Suspense } from 'react';
+
+const HeavyComponent = lazy(() => import('./HeavyComponent'));
+
+const App = () => (
+  <Suspense fallback={<div>Loading...</div>}>
+    <HeavyComponent />
+  </Suspense>
+);
+```
+
+### Optimización de Bundle
+
+- **Tree Shaking**: Vite lo hace automáticamente
+- **Análisis de bundle**: Usar `vite-bundle-visualizer` si es necesario
+- **Dependencias pequeñas**: Preferir librerías ligeras
+
+### Gestión de Memoria
+
+- **Limpiar efectos**: Siempre limpiar event listeners y timers en `useEffect`
+- **Evitar memory leaks**: No mantener referencias innecesarias
+- **Estructuras inmutables**: No mutar datos directamente
+
+```typescript
+// ✅ Limpieza en useEffect
+useEffect(() => {
+  const subscription = supabase
+    .channel('patients')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'patients' }, handleChange)
+    .subscribe();
+
+  return () => {
+    subscription.unsubscribe();
+  };
+}, []);
+```
+
+## 6. Seguridad
+
+### Buenas Prácticas de Seguridad
+
+- **Variables de Entorno**: NUNCA commitear `.env` (ya en `.gitignore`)
+- **Prefijo `VITE_`**: Usar `VITE_` para variables accesibles en cliente
+- **RLS en Supabase**: Siempre configurar Row Level Security en tablas
+- **Validación**: Validar input en cliente Y servidor
+- **HTTPS**: Usar HTTPS en producción (Vercel/Netlify lo hacen automáticamente)
+
+```typescript
+// ✅ Variables de entorno
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+// ❌ NUNCA exponer secretos del servidor en cliente
+// const SECRET_KEY = import.meta.env.SECRET_KEY; // ❌ INCORRECTO
+```
+
+### Autenticación y Autorización
+
+- **Supabase Auth**: Usar autenticación de Supabase
+- **Tokens seguros**: Supabase maneja tokens automáticamente
+- **RLS Policies**: Implementar políticas de seguridad en Supabase
+- **Protección de rutas**: Usar `ProtectedRoute` para rutas privadas
+
+### Protección de Datos
+
+- **Encriptación**: Supabase maneja encriptación en tránsito y en reposo
+- **Actualizar dependencias**: Mantener dependencias actualizadas
+- **No exponer secretos**: Nunca exponer API keys o secretos en código cliente
+
+## 7. Testing (Futuro)
+
+### Estrategias de Testing
+
+Cuando se implemente testing:
+
+- **Unit Tests**: Testear componentes individuales con Vitest + React Testing Library
+- **Integration Tests**: Testear interacciones entre componentes
+- **E2E Tests**: Considerar Playwright o Cypress para flujos críticos
+- **Mocking**: Usar MSW (Mock Service Worker) para mockear llamadas a Supabase
+
+### Organización de Tests
+
+- Co-locar tests con componentes: `Component.test.tsx`
+- Agrupar por feature cuando sea apropiado
+- Usar nombres descriptivos: `ComponentName.test.tsx`
+
+## 8. Herramientas y Entorno
+
+### Herramientas Recomendadas
+
+- **VS Code**: Editor con extensiones para React/TypeScript
+- **ESLint**: Ya configurado, ejecutar `npm run lint` antes de commit
+- **Prettier**: Considerar agregar para formato automático
+- **React Developer Tools**: Extensión del navegador para debugging
+- **Supabase Dashboard**: Para gestionar base de datos y autenticación
+
+### Configuración de Build
+
+- **Vite**: Ya configurado, usar `npm run build` para producción
+- **Variables de entorno**: Usar `.env.local` para desarrollo
+- **Optimización**: Vite optimiza automáticamente para producción
+
+### Linting y Formato
+
+- **ESLint**: Ejecutar `npm run lint` antes de hacer commit
+- **TypeScript**: El compilador verifica tipos automáticamente
+- **Configuración compartida**: Asegurar que todos usen la misma configuración
+
+## 9. Errores Comunes y Cómo Evitarlos
+
+### Errores Frecuentes
+
+1. **Olvidar dependencias en useEffect**:
+   ```typescript
+   // ❌ Incorrecto
+   useEffect(() => {
+     fetchData(userId);
+   }, []); // Falta userId
+
+   // ✅ Correcto
+   useEffect(() => {
+     fetchData(userId);
+   }, [userId]);
+   ```
+
+2. **No limpiar suscripciones**:
+   ```typescript
+   // ❌ Incorrecto
+   useEffect(() => {
+     const sub = supabase.channel('...').subscribe();
+     // Falta cleanup
+   }, []);
+
+   // ✅ Correcto
+   useEffect(() => {
+     const sub = supabase.channel('...').subscribe();
+     return () => sub.unsubscribe();
+   }, []);
+   ```
+
+3. **Mutación directa de estado**:
+   ```typescript
+   // ❌ Incorrecto
+   const updateList = (item) => {
+     list.push(item); // Mutación directa
+   };
+
+   // ✅ Correcto
+   const updateList = (item) => {
+     setList([...list, item]); // Nueva referencia
+   };
+   ```
+
+4. **No manejar estados de carga y error**:
+   ```typescript
+   // ❌ Incorrecto
+   const { data } = useQuery({ ... });
+
+   // ✅ Correcto
+   const { data, isLoading, error } = useQuery({ ... });
+   if (isLoading) return <Loading />;
+   if (error) return <Error message={error.message} />;
+   ```
+
+## 10. Checklist de Desarrollo
+
+Antes de hacer commit:
+
+- [ ] Código compila sin errores (`npm run build`)
+- [ ] Linter pasa (`npm run lint`)
+- [ ] Probado localmente (`npm run dev`)
+- [ ] Tipos TypeScript correctos (sin `any` innecesarios)
+- [ ] Sin `console.log` o código de debug
+- [ ] Manejo de errores implementado
+- [ ] Estados de carga manejados (loading, error)
+- [ ] Componentes son reutilizables cuando es apropiado
+- [ ] Comentarios en código complejo
+- [ ] Variables de entorno documentadas si son nuevas
+- [ ] Sin memory leaks (cleanup en useEffect)
+- [ ] Dependencias correctas en hooks
+
+## 11. Convenciones Específicas del Proyecto
+
+### Imports
+
+```typescript
+// 1. React y librerías externas
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+// 2. Imports de alias (@/)
+import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+
+// 3. Imports relativos (solo si es necesario)
+import { Message } from '../types/health';
+```
+
+### Nombres de Variables
+
+- **Variables**: `camelCase` - `patientName`, `isActive`
+- **Funciones**: `camelCase` con verbos - `handleSubmit`, `fetchPatients`
+- **Componentes**: `PascalCase` - `PatientCard`, `ChatMessage`
+- **Constantes**: `UPPER_SNAKE_CASE` - `MAX_RETRIES`, `API_TIMEOUT`
+- **Tipos/Interfaces**: `PascalCase` - `Patient`, `AuthContextType`
+
+### Comentarios
+
+- Comentar código complejo, no lo obvio
+- Usar JSDoc para funciones públicas:
+  ```typescript
+  /**
+   * Fetches patient data from Supabase
+   * @param patientId - The unique identifier of the patient
+   * @returns Promise with patient data or null if not found
+   */
+  const fetchPatient = async (patientId: string) => { ... };
+  ```
+
+## 12. Integración con Supabase
+
+### Cliente de Supabase
+
+```typescript
+// ✅ Siempre usar el cliente centralizado
+import { supabase } from '@/integrations/supabase/client';
+
+// ✅ Usar tipos generados
+import type { Database } from '@/integrations/supabase/types';
+```
+
+### Real-time Subscriptions
+
+```typescript
+// ✅ Limpiar suscripciones correctamente
+useEffect(() => {
+  const channel = supabase
+    .channel('patients-changes')
+    .on('postgres_changes', 
+      { event: '*', schema: 'public', table: 'patients' },
+      (payload) => {
+        // Manejar cambios
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, []);
+```
+
+### Migraciones
+
+- Las migraciones de Supabase están en `supabase/migrations/`
+- NO modificar migraciones ya aplicadas
+- Crear nuevas migraciones para cambios de esquema
+- Probar migraciones en desarrollo antes de producción

@@ -4,12 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import MobileLayout from '@/components/MobileLayout';
 import BottomNav from '@/components/BottomNav';
 import { Input } from '@/components/ui/input';
-import { Message } from '@/types/health';
+import { Message, BotResponse } from '@/types/health';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useActivePatient } from '@/hooks/useActivePatient';
+import { useConversation } from '@/hooks/useConversation';
+import { useChatMessages } from '@/hooks/useChatMessages';
 import mamaAvatar from '@/assets/mama-avatar.png';
 
 interface ConversationState {
@@ -19,14 +21,7 @@ interface ConversationState {
   severity: string;
 }
 
-const initialMessages: Message[] = [
-  {
-    id: '1',
-    content: '¡Hola! Soy Mama, tu asistente de salud. 💜\n\nEstoy aquí para ayudarte. Cuéntame, ¿qué síntomas estás experimentando hoy?',
-    sender: 'mama',
-    timestamp: new Date(),
-  },
-];
+// Mensaje inicial ya se crea automáticamente en useConversation
 
 const symptomQuestions = [
   {
@@ -67,7 +62,9 @@ const Chat = () => {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const { activePatient } = useActivePatient();
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const { conversation, loading: conversationLoading } = useConversation();
+  const { messages, loading: messagesLoading, loadingMore, loadMoreMessages, hasMore } = useChatMessages(conversation?.id || null);
+  
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [conversationContext, setConversationContext] = useState<string[]>([]);
@@ -75,22 +72,33 @@ const Chat = () => {
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Scroll automático solo cuando se agregan nuevos mensajes (no al cargar más)
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    // Solo hacer scroll si estamos cerca del final
+    if (messagesContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      
+      if (isNearBottom) {
+        scrollToBottom();
+      }
+    }
+  }, [messages.length]); // Solo cuando cambia la cantidad de mensajes
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    // Por ahora solo se aceptan imágenes
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
-      toast.error('Solo se permiten imágenes (JPG, PNG) y PDFs');
+      toast.error('Por ahora solo se permiten imágenes (JPG, PNG, WebP)');
       return;
     }
 
@@ -102,7 +110,7 @@ const Chat = () => {
     setAttachedFile(file);
   };
 
-  const uploadFile = async (file: File, description?: string): Promise<boolean> => {
+  const uploadFile = async (file: File, description?: string): Promise<string | null> => {
     setIsUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
@@ -120,30 +128,35 @@ const Chat = () => {
         ? description.trim()
         : `Archivo subido: ${file.name}`;
 
-      const { error: dbError } = await supabase.from('medical_files').insert({
-        file_name: file.name,
-        file_path: filePath,
-        file_type: file.type,
-        file_size: file.size,
-        description: fileDescription,
-        user_id: user?.id || null,
-        patient_id: activePatient?.id || profile?.patient_active || null,
-      });
+      const { data: fileData, error: dbError } = await supabase
+        .from('medical_files')
+        .insert({
+          file_name: file.name,
+          file_path: filePath,
+          file_type: file.type,
+          file_size: file.size,
+          description: fileDescription,
+          user_id: user?.id || null,
+          patient_id: activePatient?.id || profile?.patient_active || null,
+          reliability_score: null, // Se actualizará después del análisis del bot
+        })
+        .select('id')
+        .single();
 
       if (dbError) throw dbError;
 
       toast.success('Archivo guardado en tu historia clínica');
-      return true;
+      return fileData?.id || null;
     } catch (error) {
       console.error('Error uploading file:', error);
       toast.error('Error al subir el archivo');
-      return false;
+      return null;
     } finally {
       setIsUploading(false);
     }
   };
 
-  const generateResponse = (userMessage: string): string => {
+  const generateBotResponse = (userMessage: string, fileId?: string | null): BotResponse => {
     const lowerMessage = userMessage.toLowerCase();
     
     // Check for symptom keywords
@@ -151,103 +164,198 @@ const Chat = () => {
       if (symptom.keywords.some(keyword => lowerMessage.includes(keyword))) {
         // Check if we've already asked follow-up for this symptom
         if (conversationContext.includes(symptom.keywords[0])) {
-          return symptom.recommendation;
+          return {
+            message: symptom.recommendation,
+            context_update: {
+              symptoms: [...conversationContext, symptom.keywords[0]],
+            },
+          };
         } else {
           setConversationContext(prev => [...prev, symptom.keywords[0]]);
-          return symptom.followUp;
+          return {
+            message: symptom.followUp,
+            context_update: {
+              symptoms: [...conversationContext, symptom.keywords[0]],
+            },
+          };
         }
       }
     }
 
     // Check for general responses
     if (lowerMessage.includes('gracias') || lowerMessage.includes('thank')) {
-      return '¡De nada! Recuerda que estoy aquí para ayudarte. Si tienes más preguntas sobre tu salud, no dudes en consultarme. 💜\n\n¿Hay algo más en lo que pueda ayudarte?';
+      return {
+        message: '¡De nada! Recuerda que estoy aquí para ayudarte. Si tienes más preguntas sobre tu salud, no dudes en consultarme. 💜\n\n¿Hay algo más en lo que pueda ayudarte?',
+      };
     }
 
     if (lowerMessage.includes('cita') || lowerMessage.includes('doctor') || lowerMessage.includes('médico')) {
-      return '¡Claro! Puedo ayudarte a encontrar un especialista. En la sección de "Doctores Populares" encontrarás varios profesionales disponibles.\n\n¿Te gustaría que te recomiende alguno en particular según tus síntomas?';
+      return {
+        message: '¡Claro! Puedo ayudarte a encontrar un especialista. En la sección de "Doctores Populares" encontrarás varios profesionales disponibles.\n\n¿Te gustaría que te recomiende alguno en particular según tus síntomas?',
+      };
     }
 
     if (lowerMessage.includes('hola') || lowerMessage.includes('buenos') || lowerMessage.includes('buenas')) {
-      return '¡Hola! ¿Cómo te encuentras hoy? Cuéntame si tienes algún síntoma o malestar que te preocupe. Estoy aquí para ayudarte. 💜';
+      return {
+        message: '¡Hola! ¿Cómo te encuentras hoy? Cuéntame si tienes algún síntoma o malestar que te preocupe. Estoy aquí para ayudarte. 💜',
+      };
+    }
+
+    // Si hay archivo adjunto, generar respuesta con análisis (por ahora genérico)
+    if (fileId) {
+      return {
+        message: '¡Perfecto! He recibido tu archivo. Lo he guardado en tu Historia Clínica Digital. 📁\n\nPor ahora estoy procesando la información. Pronto podré analizar documentos médicos de manera más detallada.\n\n¿Hay algo más en lo que pueda ayudarte?',
+        analysis: {
+          file_id: fileId,
+          reliability_score: 50, // Valor genérico por ahora
+          document_type: 'other',
+        },
+      };
     }
 
     // Default response - ask more questions
-    return defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
+    return {
+      message: defaultResponses[Math.floor(Math.random() * defaultResponses.length)],
+    };
+  };
+
+  const processBotResponse = async (responseJson: BotResponse, conversationId: string) => {
+    try {
+      // 1. Actualizar reliability_score del archivo si existe
+      if (responseJson.analysis?.file_id && responseJson.analysis?.reliability_score) {
+        await supabase
+          .from('medical_files')
+          .update({ 
+            reliability_score: responseJson.analysis.reliability_score 
+          })
+          .eq('id', responseJson.analysis.file_id);
+      }
+
+      // 2. Guardar mensaje del bot en chat_messages
+      const { error: messageError } = await supabase
+        .from('chat_messages')
+        .insert({
+          conversation_id: conversationId,
+          content: responseJson.message,
+          sender: 'mama',
+          message_type: responseJson.analysis ? 'file' : 'text',
+          attachment_id: responseJson.analysis?.file_id || null,
+          sent_at: new Date().toISOString(),
+        });
+
+      if (messageError) throw messageError;
+
+      // 3. Actualizar contexto de la conversación si existe
+      if (responseJson.context_update && conversation) {
+        const updatedContext = {
+          ...(conversation.context || {}),
+          ...responseJson.context_update,
+        };
+
+        await supabase
+          .from('conversations')
+          .update({ context: updatedContext })
+          .eq('id', conversationId);
+      }
+    } catch (error) {
+      console.error('Error processing bot response:', error);
+      toast.error('Error al procesar la respuesta del bot');
+    }
   };
 
   const handleSend = async () => {
     if (!inputValue.trim() && !attachedFile) return;
-
-    // Handle file upload if attached
-    if (attachedFile) {
-      // Use the input text as description context for the file
-      const userContext = inputValue.trim() || undefined;
-      
-      // Show user message first if they typed something
-      if (userContext) {
-        const contextMessage: Message = {
-          id: Date.now().toString(),
-          content: userContext,
-          sender: 'user',
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, contextMessage]);
-      }
-      
-      const uploaded = await uploadFile(attachedFile, userContext);
-      if (uploaded) {
-        const fileMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          content: `📎 Archivo adjunto: ${attachedFile.name}`,
-          sender: 'user',
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, fileMessage]);
-        setAttachedFile(null);
-        setInputValue('');
-        if (fileInputRef.current) fileInputRef.current.value = '';
-
-        // Mama response about the file
-        setIsTyping(true);
-        setTimeout(() => {
-          const mamaMessage: Message = {
-            id: (Date.now() + 2).toString(),
-            content: userContext 
-              ? `¡Perfecto! He guardado tu archivo "${attachedFile.name}" en tu Historia Clínica Digital con la descripción que me proporcionaste. 📁\n\n¿Hay algo más en lo que pueda ayudarte?`
-              : '¡Perfecto! He guardado tu archivo en tu Historia Clínica Digital. Puedes acceder a él cuando lo necesites. 📁\n\n¿Hay algo más en lo que pueda ayudarte?',
-            sender: 'mama',
-            timestamp: new Date(),
-          };
-          setMessages((prev) => [...prev, mamaMessage]);
-          setIsTyping(false);
-        }, 1000);
-      }
+    if (!conversation) {
+      toast.error('No se pudo cargar la conversación');
       return;
     }
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content: inputValue,
-      sender: 'user',
-      timestamp: new Date(),
-    };
+    const currentInput = inputValue.trim();
+    let uploadedFileId: string | null = null;
 
-    setMessages((prev) => [...prev, userMessage]);
-    const currentInput = inputValue;
+    // Handle file upload if attached
+    if (attachedFile) {
+      const userContext = currentInput || undefined;
+      uploadedFileId = await uploadFile(attachedFile, userContext);
+      
+      if (!uploadedFileId) {
+        return; // Error ya fue manejado en uploadFile
+      }
+
+      // Guardar mensaje del usuario con archivo
+      if (currentInput) {
+        const { error: textMessageError } = await supabase
+          .from('chat_messages')
+          .insert({
+            conversation_id: conversation.id,
+            content: currentInput,
+            sender: 'user',
+            message_type: 'text',
+            sent_at: new Date().toISOString(),
+          });
+
+        if (textMessageError) {
+          console.error('Error saving user text message:', textMessageError);
+        }
+      }
+
+      // Guardar mensaje del usuario con archivo adjunto
+      const { error: fileMessageError } = await supabase
+        .from('chat_messages')
+        .insert({
+          conversation_id: conversation.id,
+          content: `📎 Archivo adjunto: ${attachedFile.name}`,
+          sender: 'user',
+          message_type: 'file',
+          attachment_id: uploadedFileId,
+          attachment_type: 'image',
+          sent_at: new Date().toISOString(),
+        });
+
+      if (fileMessageError) {
+        console.error('Error saving file message:', fileMessageError);
+        toast.error('Error al guardar el mensaje');
+        return;
+      }
+
+      setAttachedFile(null);
+      setInputValue('');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+
+      // Generar respuesta del bot
+      setIsTyping(true);
+      setTimeout(async () => {
+        const botResponse = generateBotResponse(currentInput || 'Archivo adjunto', uploadedFileId);
+        await processBotResponse(botResponse, conversation.id);
+        setIsTyping(false);
+      }, 1000);
+      return;
+    }
+
+    // Guardar mensaje del usuario (solo texto)
+    const { error: userMessageError } = await supabase
+      .from('chat_messages')
+      .insert({
+        conversation_id: conversation.id,
+        content: currentInput,
+        sender: 'user',
+        message_type: 'text',
+        sent_at: new Date().toISOString(),
+      });
+
+    if (userMessageError) {
+      console.error('Error saving user message:', userMessageError);
+      toast.error('Error al guardar el mensaje');
+      return;
+    }
+
     setInputValue('');
     setIsTyping(true);
 
-    // Generate contextual response
-    setTimeout(() => {
-      const response = generateResponse(currentInput);
-      const mamaMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: response,
-        sender: 'mama',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, mamaMessage]);
+    // Generar y guardar respuesta del bot
+    setTimeout(async () => {
+      const botResponse = generateBotResponse(currentInput);
+      await processBotResponse(botResponse, conversation.id);
       setIsTyping(false);
     }, 1500);
   };
@@ -271,26 +379,24 @@ const Chat = () => {
         </div>
       </header>
 
-      {/* Quick Symptom Buttons */}
-      <div className="px-4 py-3 bg-card/50 border-b border-border overflow-x-auto">
-        <div className="flex gap-2">
-          {['Dolor de cabeza', 'Fiebre', 'Tos', 'Cansancio', 'Estómago'].map((symptom) => (
-            <button
-              key={symptom}
-              onClick={() => {
-                setInputValue(`Tengo ${symptom.toLowerCase()}`);
-              }}
-              className="px-3 py-1.5 bg-primary/10 text-primary rounded-full text-sm font-medium whitespace-nowrap hover:bg-primary/20 transition-colors"
-            >
-              {symptom}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 pb-36 space-y-4">
-        {messages.map((message) => (
+      <div 
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto px-4 py-4 pb-36 space-y-4"
+        onScroll={(e) => {
+          const target = e.target as HTMLDivElement;
+          // Cargar más mensajes cuando se hace scroll hacia arriba (primeros 100px)
+          if (target.scrollTop < 100 && hasMore && !loadingMore && !messagesLoading) {
+            loadMoreMessages();
+          }
+        }}
+      >
+        {(conversationLoading || messagesLoading) && messages.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-muted-foreground">Cargando conversación...</div>
+          </div>
+        ) : (
+          messages.map((message) => (
           <div
             key={message.id}
             className={cn(
@@ -320,7 +426,8 @@ const Chat = () => {
               </p>
             </div>
           </div>
-        ))}
+        ))
+        )}
         
         {isTyping && (
           <div className="flex gap-2 justify-start">
@@ -363,7 +470,7 @@ const Chat = () => {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp,application/pdf"
+            accept="image/jpeg,image/png,image/webp"
             onChange={handleFileSelect}
             className="hidden"
           />
