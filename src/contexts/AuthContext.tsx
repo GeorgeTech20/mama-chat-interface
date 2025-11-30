@@ -45,7 +45,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
@@ -78,28 +77,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     let isMounted = true;
 
-    // Get initial session first
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!isMounted) return;
-      
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        await fetchProfile(session.user.id);
-      }
-      
-      if (isMounted) {
-        setLoading(false);
-        setInitialLoadDone(true);
-      }
-    });
-
-    // Set up auth state listener for subsequent changes
+    // Set up auth state listener FIRST
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!isMounted || !initialLoadDone) return;
+      if (!isMounted) return;
       
       setSession(session);
       setUser(session?.user ?? null);
@@ -114,13 +96,31 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       } else {
         setProfile(null);
       }
+      
+      setLoading(false);
+    });
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!isMounted) return;
+      
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        await fetchProfile(session.user.id);
+      }
+      
+      if (isMounted) {
+        setLoading(false);
+      }
     });
 
     return () => {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchProfile, initialLoadDone]);
+  }, [fetchProfile]);
 
   return (
     <AuthContext.Provider value={{ user, session, profile, loading, signOut, refreshProfile }}>

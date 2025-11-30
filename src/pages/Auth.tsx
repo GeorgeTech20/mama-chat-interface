@@ -146,6 +146,7 @@ const Auth = () => {
       }
     } catch (err) {
       toast.error('Error de conexión');
+    } finally {
       setIsLoading(false);
     }
   };
