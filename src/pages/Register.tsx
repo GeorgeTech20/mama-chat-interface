@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import MobileLayout from '@/components/MobileLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -106,15 +106,12 @@ const getDaysInMonth = (month: number, year: number) => {
 
 const Register = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { user, refreshProfile } = useAuth();
-  const userId = location.state?.userId || user?.id;
-  const emailFromAuth = location.state?.email || user?.email || '';
+  const { user, profile, loading, refreshProfile } = useAuth();
   
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState<'next' | 'prev'>('next');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(userId);
+  const [isInitialized, setIsInitialized] = useState(false);
   
   const currentYear = new Date().getFullYear();
   const [formData, setFormData] = useState({
@@ -127,79 +124,69 @@ const Register = () => {
     height: 170,
     weight: 70,
     gender: '',
-    email: emailFromAuth
+    email: ''
   });
 
-  // Check for authenticated user on mount
+  // Handle auth state and form initialization
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setCurrentUserId(session.user.id);
-        
-        // Check if profile already has data and is complete
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .maybeSingle();
-        
-        // Profile is complete if it has name AND dni
-        if (profile && profile.name && profile.dni) {
-          navigate('/');
-          return;
-        }
-        
-        // Try to get name from profile first, then from OAuth metadata
-        let firstName = '';
-        let lastName = '';
-        
-        if (profile?.name) {
-          const names = profile.name.split(' ');
-          firstName = names[0] || '';
-          lastName = names.slice(1).join(' ') || '';
-        } else if (session.user.user_metadata) {
-          // Get name from OAuth provider (Google, Apple, etc.)
-          const metadata = session.user.user_metadata;
-          firstName = metadata.given_name || metadata.first_name || '';
-          lastName = metadata.family_name || metadata.last_name || '';
-          
-          // If no separate first/last name, try full_name
-          if (!firstName && metadata.full_name) {
-            const names = metadata.full_name.split(' ');
-            firstName = names[0] || '';
-            lastName = names.slice(1).join(' ') || '';
-          }
-          
-          // Last resort: try name field
-          if (!firstName && metadata.name) {
-            const names = metadata.name.split(' ');
-            firstName = names[0] || '';
-            lastName = names.slice(1).join(' ') || '';
-          }
-        }
-        
-        // Pre-fill form with available data
-        if (firstName) {
-          setFormData(prev => ({
-            ...prev,
-            name: firstName,
-            surname: lastName,
-          }));
-          
-          // Skip to DNI step if we have name from OAuth and no DNI yet
-          const hasDni = profile?.dni;
-          if (!hasDni) {
-            setStep(2);
-          }
-        }
-      } else if (!userId) {
-        // No authenticated user and no userId from state
-        navigate('/login');
+    // Wait for AuthContext to finish loading
+    if (loading) return;
+    
+    // If no user, redirect to login
+    if (!user) {
+      navigate('/login', { replace: true });
+      return;
+    }
+    
+    // If profile is already complete, redirect to home
+    if (profile && profile.name && profile.dni) {
+      navigate('/', { replace: true });
+      return;
+    }
+    
+    // Pre-fill form data from profile or OAuth metadata
+    let firstName = '';
+    let lastName = '';
+    
+    if (profile?.name) {
+      firstName = profile.name;
+      lastName = profile.surname || '';
+    } else if (user.user_metadata) {
+      // Get name from OAuth provider (Google, Apple, etc.)
+      const metadata = user.user_metadata;
+      firstName = metadata.given_name || metadata.first_name || '';
+      lastName = metadata.family_name || metadata.last_name || '';
+      
+      // If no separate first/last name, try full_name
+      if (!firstName && metadata.full_name) {
+        const names = metadata.full_name.split(' ');
+        firstName = names[0] || '';
+        lastName = names.slice(1).join(' ') || '';
       }
-    };
-    checkAuth();
-  }, [navigate, userId]);
+      
+      // Last resort: try name field
+      if (!firstName && metadata.name) {
+        const names = metadata.name.split(' ');
+        firstName = names[0] || '';
+        lastName = names.slice(1).join(' ') || '';
+      }
+    }
+    
+    // Update form data
+    setFormData(prev => ({
+      ...prev,
+      name: firstName || prev.name,
+      surname: lastName || prev.surname,
+      email: user.email || prev.email
+    }));
+    
+    // Skip to DNI step if we have name from OAuth and no DNI yet
+    if (firstName && (!profile || !profile.dni)) {
+      setStep(2);
+    }
+    
+    setIsInitialized(true);
+  }, [loading, user, profile, navigate]);
 
   const totalSteps = 6;
   
@@ -222,7 +209,7 @@ const Register = () => {
   };
 
   const handleSubmit = async () => {
-    if (!currentUserId) {
+    if (!user?.id) {
       toast.error('No hay usuario autenticado');
       navigate('/login');
       return;
@@ -506,6 +493,15 @@ const Register = () => {
         return null;
     }
   };
+
+  // Show loading while AuthContext loads or form initializes
+  if (loading || !isInitialized) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <MobileLayout showNav={false}>
