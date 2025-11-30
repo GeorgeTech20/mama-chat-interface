@@ -86,6 +86,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
       
+      // Set loading to true when auth state changes to ensure we wait for profile
+      setLoading(true);
       setSession(session);
       setUser(session?.user ?? null);
 
