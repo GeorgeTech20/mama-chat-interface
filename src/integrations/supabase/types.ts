@@ -328,6 +328,50 @@ export type Database = {
           },
         ]
       }
+      medical_files: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          patient_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id?: string
+          patient_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          patient_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medical_files_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients_app"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
@@ -448,6 +492,129 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: true
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patients_app: {
+        Row: {
+          backend_patient_id: number | null
+          birth_date: string
+          created_at: string
+          dni: string
+          email: string | null
+          first_name: string
+          gender: string | null
+          height: number | null
+          id: string
+          last_name: string
+          phone: string | null
+          updated_at: string
+          user_creator: string | null
+          user_owner: string | null
+          weight: number | null
+        }
+        Insert: {
+          backend_patient_id?: number | null
+          birth_date: string
+          created_at?: string
+          dni: string
+          email?: string | null
+          first_name: string
+          gender?: string | null
+          height?: number | null
+          id?: string
+          last_name: string
+          phone?: string | null
+          updated_at?: string
+          user_creator?: string | null
+          user_owner?: string | null
+          weight?: number | null
+        }
+        Update: {
+          backend_patient_id?: number | null
+          birth_date?: string
+          created_at?: string
+          dni?: string
+          email?: string | null
+          first_name?: string
+          gender?: string | null
+          height?: number | null
+          id?: string
+          last_name?: string
+          phone?: string | null
+          updated_at?: string
+          user_creator?: string | null
+          user_owner?: string | null
+          weight?: number | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          backend_user_id: number | null
+          birth_date: string
+          created_at: string
+          dni: string
+          gender: string
+          height: number
+          id: string
+          name: string
+          patient_active: string | null
+          patient_main: string | null
+          phone: string | null
+          surname: string
+          updated_at: string
+          user_id: string
+          weight: number
+        }
+        Insert: {
+          backend_user_id?: number | null
+          birth_date?: string
+          created_at?: string
+          dni?: string
+          gender?: string
+          height?: number
+          id?: string
+          name?: string
+          patient_active?: string | null
+          patient_main?: string | null
+          phone?: string | null
+          surname?: string
+          updated_at?: string
+          user_id: string
+          weight?: number
+        }
+        Update: {
+          backend_user_id?: number | null
+          birth_date?: string
+          created_at?: string
+          dni?: string
+          gender?: string
+          height?: number
+          id?: string
+          name?: string
+          patient_active?: string | null
+          patient_main?: string | null
+          phone?: string | null
+          surname?: string
+          updated_at?: string
+          user_id?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_patient_active"
+            columns: ["patient_active"]
+            isOneToOne: false
+            referencedRelation: "patients_app"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_patient_main"
+            columns: ["patient_main"]
+            isOneToOne: false
+            referencedRelation: "patients_app"
             referencedColumns: ["id"]
           },
         ]
