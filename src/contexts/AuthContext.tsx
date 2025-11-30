@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -45,8 +45,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileFetchPending, setProfileFetchPending] = useState(false);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -58,7 +59,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     } else {
       setProfile(null);
     }
-  };
+  }, []);
 
   const refreshProfile = async () => {
     if (user?.id) {
@@ -73,6 +74,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setProfile(null);
   };
 
+  // Handle profile fetching when user changes
+  useEffect(() => {
+    if (profileFetchPending && user?.id) {
+      fetchProfile(user.id).then(() => {
+        setProfileFetchPending(false);
+        setLoading(false);
+      });
+    } else if (profileFetchPending && !user) {
+      setProfileFetchPending(false);
+      setLoading(false);
+    }
+  }, [profileFetchPending, user, fetchProfile]);
+
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -80,15 +94,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Defer profile fetch with setTimeout to avoid deadlock
         if (session?.user) {
-          setTimeout(() => {
-            fetchProfile(session.user.id);
-          }, 0);
+          // Schedule profile fetch via effect to avoid deadlock
+          setProfileFetchPending(true);
         } else {
           setProfile(null);
+          setLoading(false);
         }
-        setLoading(false);
       }
     );
 
@@ -98,9 +110,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        fetchProfile(session.user.id);
+        setProfileFetchPending(true);
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
