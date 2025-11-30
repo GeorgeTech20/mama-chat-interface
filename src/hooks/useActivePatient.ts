@@ -30,7 +30,7 @@ export const useActivePatient = () => {
 
       try {
         const { data, error } = await supabase
-          .from('patients')
+          .from('patients_app')
           .select('*')
           .eq('id', profile.patient_active)
           .single();

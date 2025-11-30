@@ -74,7 +74,7 @@ const Profile = () => {
     try {
       // Fetch all patients the user can see
       const { data: patients, error } = await supabase
-        .from('patients')
+        .from('patients_app')
         .select('*')
         .or(`user_owner.eq.${user.id},user_creator.eq.${user.id}`);
 
@@ -132,7 +132,7 @@ const Profile = () => {
 
     try {
       const { error } = await supabase
-        .from('patients')
+        .from('patients_app')
         .update({
           phone: editForm.phone,
           height: editForm.height,

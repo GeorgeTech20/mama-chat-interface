@@ -99,13 +99,16 @@ const MedicalLibrary = () => {
 
       if (uploadError) throw uploadError;
 
+      // Get current user
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
       // Save file metadata
       const { error: dbError } = await supabase.from('medical_files').insert({
         file_name: file.name,
         file_path: filePath,
         file_type: file.type,
         file_size: file.size,
-        user_id: null,
+        user_id: currentUser?.id,
       });
 
       if (dbError) throw dbError;

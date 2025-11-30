@@ -63,7 +63,7 @@ const PatientSelector = () => {
     
     try {
       const { data, error } = await supabase
-        .from('patients')
+        .from('patients_app')
         .select('id, dni, first_name, last_name, birth_date, height, weight, gender')
         .or(`user_owner.eq.${user.id},user_creator.eq.${user.id}`);
 
