@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown, User, Check, Crown } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import mamaAvatar from '@/assets/mama-avatar.png';
 
 interface Patient {
   id: string;
@@ -115,16 +115,28 @@ const PatientSelector = () => {
     return '¡Buenas noches!';
   };
 
+  // Get initials for avatar fallback
+  const getInitials = () => {
+    if (activePatient) {
+      return `${activePatient.first_name.charAt(0)}${activePatient.last_name.charAt(0)}`.toUpperCase();
+    }
+    if (profile) {
+      return `${profile.name.charAt(0)}${profile.surname?.charAt(0) || ''}`.toUpperCase();
+    }
+    return 'U';
+  };
+
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <button className="flex items-center gap-3 hover:opacity-80 transition-opacity">
           <div className="relative">
-            <img
-              src={mamaAvatar}
-              alt="Usuario"
-              className="w-12 h-12 rounded-full object-cover border-2 border-primary"
-            />
+            <Avatar className="w-12 h-12 ring-2 ring-primary">
+              <AvatarImage src={profile?.avatar_url || undefined} alt={displayName} />
+              <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                {getInitials()}
+              </AvatarFallback>
+            </Avatar>
             <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-card border-2 border-border rounded-full flex items-center justify-center">
               <ChevronDown className="w-3 h-3 text-muted-foreground" />
             </div>

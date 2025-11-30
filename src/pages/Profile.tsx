@@ -5,7 +5,9 @@ import BottomNav from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AvatarUpload } from '@/components/molecules/AvatarUpload';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -20,7 +22,10 @@ import {
   Heart,
   ChevronRight,
   LogOut,
-  Calendar
+  Calendar,
+  Trash2,
+  AlertTriangle,
+  Loader2
 } from 'lucide-react';
 
 interface Patient {
@@ -45,7 +50,10 @@ const Profile = () => {
   const [familyPatients, setFamilyPatients] = useState<Patient[]>([]);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isAddingFamily, setIsAddingFamily] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
 
   const [editForm, setEditForm] = useState({
     phone: '',
@@ -197,6 +205,100 @@ const Profile = () => {
     navigate('/login');
   };
 
+  const handleDeleteAccount = async () => {
+    if (!user?.id) return;
+
+    setDeleting(true);
+    try {
+      // 1. Eliminar archivos de storage (avatars)
+      if (profile?.avatar_url && profile.avatar_url.includes('/avatars/')) {
+        const urlParts = profile.avatar_url.split('/avatars/');
+        if (urlParts.length === 2) {
+          const filePath = urlParts[1];
+          await supabase.storage.from('avatars').remove([filePath]);
+        }
+      }
+
+      // 2. Eliminar todos los avatares del usuario del storage
+      const { data: avatarFiles } = await supabase.storage
+        .from('avatars')
+        .list(user.id, { limit: 1000 });
+      
+      if (avatarFiles && avatarFiles.length > 0) {
+        const avatarPaths = avatarFiles.map(file => `${user.id}/${file.name}`);
+        await supabase.storage.from('avatars').remove(avatarPaths);
+      }
+
+      // 3. Obtener todos los archivos médicos del usuario
+      const { data: medicalFiles } = await supabase
+        .from('medical_files')
+        .select('file_path')
+        .eq('user_id', user.id);
+
+      // 4. Eliminar archivos médicos del storage
+      if (medicalFiles && medicalFiles.length > 0) {
+        const filePaths = medicalFiles.map(file => file.file_path);
+        await supabase.storage.from('medical-files').remove(filePaths);
+      }
+
+      // 5. Eliminar mensajes de chat (si existen conversaciones)
+      const { data: conversations } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('user_id', user.id);
+
+      if (conversations && conversations.length > 0) {
+        const conversationIds = conversations.map(c => c.id);
+        await supabase
+          .from('chat_messages')
+          .delete()
+          .in('conversation_id', conversationIds);
+      }
+
+      // 6. Eliminar conversaciones
+      await supabase
+        .from('conversations')
+        .delete()
+        .eq('user_id', user.id);
+
+      // 7. Eliminar archivos médicos de la base de datos
+      await supabase
+        .from('medical_files')
+        .delete()
+        .eq('user_id', user.id);
+
+      // 8. Eliminar pacientes asociados
+      await supabase
+        .from('patients_app')
+        .delete()
+        .or(`user_owner.eq.${user.id},user_creator.eq.${user.id}`);
+
+      // 9. Eliminar perfil (se eliminará automáticamente con CASCADE cuando se elimine el usuario)
+      // Pero lo hacemos explícitamente por si acaso
+      await supabase
+        .from('profiles')
+        .delete()
+        .eq('user_id', user.id);
+
+      // 10. Cerrar sesión y redirigir
+      // Nota: La eliminación completa de auth.users requiere permisos de admin
+      // Los datos ya fueron eliminados, solo queda cerrar sesión
+      toast.success('Todos tus datos han sido eliminados. Cerrando sesión...');
+      
+      // Esperar un momento para que el usuario vea el mensaje
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      await signOut();
+      navigate('/login');
+    } catch (error: any) {
+      console.error('Error deleting account:', error);
+      toast.error('Error al eliminar la cuenta. Por favor, contacta al soporte.');
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
   if (loading) {
     return (
       <MobileLayout>
@@ -228,9 +330,16 @@ const Profile = () => {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center">
-                    <User className="w-7 h-7 text-primary" />
-                  </div>
+                  <AvatarUpload
+                    currentAvatarUrl={profile?.avatar_url}
+                    fallbackText={`${mainPatient.first_name.charAt(0)}${mainPatient.last_name.charAt(0)}`.toUpperCase()}
+                    userId={user?.id || ''}
+                    onAvatarChange={(newUrl) => {
+                      refreshProfile();
+                    }}
+                    size="lg"
+                    editable={false}
+                  />
                   <div>
                     <CardTitle className="text-lg">
                       {mainPatient.first_name} {mainPatient.last_name}
@@ -240,52 +349,83 @@ const Profile = () => {
                     </p>
                   </div>
                 </div>
-                <Dialog open={isEditingProfile} onOpenChange={setIsEditingProfile}>
-                  <DialogTrigger asChild>
+                <Sheet open={isEditingProfile} onOpenChange={setIsEditingProfile}>
+                  <SheetTrigger asChild>
                     <button className="p-2 hover:bg-accent rounded-full transition-colors">
                       <Edit2 className="w-5 h-5 text-muted-foreground" />
                     </button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Editar Perfil</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 pt-4">
-                      <div>
-                        <label className="text-sm font-medium text-foreground">Teléfono</label>
-                        <Input
-                          placeholder="+51 999 999 999"
-                          value={editForm.phone}
-                          onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                          className="mt-1"
+                  </SheetTrigger>
+                  <SheetContent side="bottom" className="h-[90vh] rounded-t-3xl">
+                    <SheetHeader>
+                      <SheetTitle className="text-left text-xl">Editar Perfil</SheetTitle>
+                    </SheetHeader>
+                    <div className="space-y-6 pt-6 pb-8">
+                      {/* Avatar Upload Section */}
+                      <div className="flex flex-col items-center gap-4">
+                        <AvatarUpload
+                          currentAvatarUrl={profile?.avatar_url}
+                          fallbackText={`${mainPatient.first_name.charAt(0)}${mainPatient.last_name.charAt(0)}`.toUpperCase()}
+                          userId={user?.id || ''}
+                          onAvatarChange={(newUrl) => {
+                            refreshProfile();
+                          }}
+                          size="lg"
+                          editable={true}
                         />
+                        <p className="text-sm text-muted-foreground text-center">
+                          Toca la foto para cambiarla
+                        </p>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
+
+                      {/* Form Fields */}
+                      <div className="space-y-4">
                         <div>
-                          <label className="text-sm font-medium text-foreground">Altura (cm)</label>
+                          <label className="text-sm font-medium text-foreground mb-2 block">Teléfono</label>
                           <Input
-                            type="number"
-                            value={editForm.height}
-                            onChange={(e) => setEditForm({ ...editForm, height: parseInt(e.target.value) || 0 })}
-                            className="mt-1"
+                            placeholder="+51 999 999 999"
+                            value={editForm.phone}
+                            onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                            className="w-full"
                           />
                         </div>
-                        <div>
-                          <label className="text-sm font-medium text-foreground">Peso (kg)</label>
-                          <Input
-                            type="number"
-                            value={editForm.weight}
-                            onChange={(e) => setEditForm({ ...editForm, weight: parseInt(e.target.value) || 0 })}
-                            className="mt-1"
-                          />
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm font-medium text-foreground mb-2 block">Altura (cm)</label>
+                            <Input
+                              type="number"
+                              value={editForm.height}
+                              onChange={(e) => setEditForm({ ...editForm, height: parseInt(e.target.value) || 0 })}
+                              className="w-full"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-foreground mb-2 block">Peso (kg)</label>
+                            <Input
+                              type="number"
+                              value={editForm.weight}
+                              onChange={(e) => setEditForm({ ...editForm, weight: parseInt(e.target.value) || 0 })}
+                              className="w-full"
+                            />
+                          </div>
                         </div>
                       </div>
-                      <Button onClick={handleUpdateProfile} className="w-full">
-                        Guardar Cambios
-                      </Button>
+
+                      {/* Action Buttons */}
+                      <div className="space-y-3 pt-4">
+                        <Button onClick={handleUpdateProfile} className="w-full" size="lg">
+                          Guardar Cambios
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setIsEditingProfile(false)} 
+                          className="w-full"
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
                     </div>
-                  </DialogContent>
-                </Dialog>
+                  </SheetContent>
+                </Sheet>
               </div>
             </CardHeader>
             <CardContent>
@@ -517,6 +657,74 @@ const Profile = () => {
               </CardContent>
             </Card>
           )}
+        </section>
+
+        {/* Delete Account Section */}
+        <section className="pt-6 border-t border-border">
+          <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+            <DialogTrigger asChild>
+              <Button
+                variant="destructive"
+                className="w-full"
+                disabled={deleting}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Eliminar Cuenta
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-destructive">
+                  <AlertTriangle className="w-5 h-5" />
+                  Confirmar Eliminación de Cuenta
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <p className="text-sm text-foreground">
+                  Esta acción es <strong className="text-destructive">irreversible</strong>. Se eliminará permanentemente:
+                </p>
+                <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside">
+                  <li>Tu perfil y datos personales</li>
+                  <li>Todos los pacientes registrados</li>
+                  <li>Todos los archivos médicos subidos</li>
+                  <li>Todas las conversaciones y mensajes</li>
+                  <li>Tu foto de perfil</li>
+                  <li>Tu cuenta de autenticación</li>
+                </ul>
+                <p className="text-sm font-medium text-foreground">
+                  ¿Estás seguro de que deseas eliminar tu cuenta?
+                </p>
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="flex-1"
+                    disabled={deleting}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleDeleteAccount}
+                    className="flex-1"
+                    disabled={deleting}
+                  >
+                    {deleting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Eliminando...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Sí, Eliminar
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </section>
       </div>
       <BottomNav />

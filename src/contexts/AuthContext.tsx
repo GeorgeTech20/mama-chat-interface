@@ -15,6 +15,7 @@ interface Profile {
   phone?: string;
   patient_main?: string;
   patient_active?: string;
+  avatar_url?: string;
 }
 
 interface AuthContextType {
