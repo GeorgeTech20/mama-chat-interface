@@ -150,20 +150,46 @@ const Register = () => {
           return;
         }
         
-        // Pre-fill form with Google data if available and skip to DNI step
+        // Try to get name from profile first, then from OAuth metadata
+        let firstName = '';
+        let lastName = '';
+        
         if (profile?.name) {
           const names = profile.name.split(' ');
-          const firstName = names[0] || '';
-          const lastName = names.slice(1).join(' ') || '';
+          firstName = names[0] || '';
+          lastName = names.slice(1).join(' ') || '';
+        } else if (session.user.user_metadata) {
+          // Get name from OAuth provider (Google, Apple, etc.)
+          const metadata = session.user.user_metadata;
+          firstName = metadata.given_name || metadata.first_name || '';
+          lastName = metadata.family_name || metadata.last_name || '';
           
+          // If no separate first/last name, try full_name
+          if (!firstName && metadata.full_name) {
+            const names = metadata.full_name.split(' ');
+            firstName = names[0] || '';
+            lastName = names.slice(1).join(' ') || '';
+          }
+          
+          // Last resort: try name field
+          if (!firstName && metadata.name) {
+            const names = metadata.name.split(' ');
+            firstName = names[0] || '';
+            lastName = names.slice(1).join(' ') || '';
+          }
+        }
+        
+        // Pre-fill form with available data
+        if (firstName) {
           setFormData(prev => ({
             ...prev,
             name: firstName,
             surname: lastName,
           }));
           
-          // If we already have name data from OAuth, skip to DNI step
-          if (firstName && !profile.dni) {
+          // Skip to DNI step if we have name from OAuth and no DNI yet
+          const hasDni = profile?.dni;
+          if (!hasDni) {
             setStep(2);
           }
         }
