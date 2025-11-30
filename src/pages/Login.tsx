@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MobileLayout from '@/components/MobileLayout';
 import { Button } from '@/components/ui/button';
-import { Heart } from 'lucide-react';
 import loginBackground from '@/assets/login-background.png';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -108,9 +107,6 @@ const Login = () => {
 
         {/* Hero Section - Center */}
         <div className="flex-1 flex flex-col items-center justify-center px-8 text-center relative z-10">
-          <div className="w-16 h-16 flex items-center justify-center mb-6">
-            <Heart className="w-12 h-12 text-primary-foreground" strokeWidth={1.5} />
-          </div>
           <h1 className="text-3xl font-semibold text-primary-foreground tracking-tight">
             Vida
           </h1>
